@@ -3,4 +3,5 @@ pandas
 altair
 matplotlib
 reportlab
+openpyxl
 xlsxwriter
