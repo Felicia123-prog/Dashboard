@@ -47,12 +47,18 @@ if isinstance(datum_range, list) and len(datum_range) == 2:
 else:
     filtered = pd.DataFrame()
 
+# 🧪 Visuele debug
+st.write("🔍 Aantal rijen na filtering:", filtered.shape[0])
+st.write("📋 Kolommen in filtered:", filtered.columns.tolist())
+st.write("📅 Beschikbare datums voor station:", df[df["StationID"] == station]["Datum"].dt.date.unique())
+
 # 📅 Metadata
 st.title("🌦️ Klimaat per station – testversie")
-if not filtered.empty:
-    st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
+if filtered.empty:
+    st.warning("📭 Geen gegevens voor deze selectie. Controleer station en datum.")
+    st.stop()
 else:
-    st.warning("📭 Geen data gevonden voor deze selectie. Controleer station en datum.")
+    st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
 
 # 📊 Grafieken
 def plot_element(kolom, kleur, titel, eenheid, chart_type="line"):
@@ -74,13 +80,12 @@ def plot_element(kolom, kleur, titel, eenheid, chart_type="line"):
     else:
         st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
-if not filtered.empty:
-    plot_element("Temperature", "orange", "Temperatuur", "°C")
-    plot_element("RH", "blue", "Relatieve vochtigheid", "%")
-    plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas", chart_type="bar")
-    plot_element("Pressure", "green", "Luchtdruk", "hPa")
-    plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
-    plot_element("Wind direction", "purple", "Windrichting", "°")
+plot_element("Temperature", "orange", "Temperatuur", "°C")
+plot_element("RH", "blue", "Relatieve vochtigheid", "%")
+plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas", chart_type="bar")
+plot_element("Pressure", "green", "Luchtdruk", "hPa")
+plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
+plot_element("Wind direction", "purple", "Windrichting", "°")
 
 # 🧭 Windroos
 if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
@@ -116,14 +121,13 @@ col2.metric("Gem. relatieve vocht (%)", f"{filtered['RH'].mean():.1f}" if "RH" i
 col3.metric("Gem. windsnelheid (knopen)", f"{filtered['Wind Velocity'].mean():.1f}" if "Wind Velocity" in filtered.columns and not filtered["Wind Velocity"].dropna().empty else "—")
 
 # 📥 Download als CSV
-if not filtered.empty:
-    st.download_button(
-        label="📥 Download als CSV",
-        data=filtered.to_csv(index=False).encode('utf-8'),
-        file_name=f"{station}_klimaatdata.csv",
-        mime="text/csv"
-    )
-    # 📤 Grafieken exporteren
+st.download_button(
+    label="📥 Download als CSV",
+    data=filtered.to_csv(index=False).encode('utf-8'),
+    file_name=f"{station}_klimaatdata.csv",
+    mime="text/csv"
+)
+# 📤 Grafieken exporteren
 fig_paths = {}
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
