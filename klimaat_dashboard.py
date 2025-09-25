@@ -52,6 +52,8 @@ else:
 st.title("🌦️ Klimaat per station – testversie")
 if not filtered.empty:
     st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
+else:
+    st.warning("📭 Geen data gevonden voor deze selectie. Controleer station en datum.")
 
 # 📊 Grafieken
 def plot_element(kolom, kleur, titel, eenheid, chart_type="line"):
@@ -73,12 +75,13 @@ def plot_element(kolom, kleur, titel, eenheid, chart_type="line"):
     else:
         st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
-plot_element("Temperature", "orange", "Temperatuur", "°C")
-plot_element("RH", "blue", "Relatieve vochtigheid", "%")
-plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas", chart_type="bar")
-plot_element("Pressure", "green", "Luchtdruk", "hPa")
-plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
-plot_element("Wind direction", "purple", "Windrichting", "°")
+if not filtered.empty:
+    plot_element("Temperature", "orange", "Temperatuur", "°C")
+    plot_element("RH", "blue", "Relatieve vochtigheid", "%")
+    plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas", chart_type="bar")
+    plot_element("Pressure", "green", "Luchtdruk", "hPa")
+    plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
+    plot_element("Wind direction", "purple", "Windrichting", "°")
 
 # 🧭 Windroos
 if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
@@ -121,8 +124,7 @@ if not filtered.empty:
         file_name=f"{station}_klimaatdata.csv",
         mime="text/csv"
     )
-
-# 📤 Grafieken exporteren
+    # 📤 Grafieken exporteren
 fig_paths = {}
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
@@ -149,6 +151,7 @@ for key, (kolom, kleur, titel) in grafieken.items():
         ax.set_title(titel)
         save_plot(fig, key)
 
+# 🧭 Windroos exporteren
 if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
     windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
     windroos_data.dropna(inplace=True)
@@ -165,13 +168,13 @@ if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
             ax.set_theta_direction(-1)
             ax.set_title("Windroos – Windsnelheid per richting")
             save_plot(fig, "roos")
-    # 📄 Genereer PDF-rapport
+
+# 📄 PDF-generatie
 pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
 
-# ✅ Veilige datumweergave
 if start_date and end_date:
     c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
 else:
@@ -211,4 +214,4 @@ st.download_button(
     data=pdf_buffer.getvalue(),
     file_name=f"{station}_klimaatrapport.pdf",
     mime="application/pdf"
-)        
+)
