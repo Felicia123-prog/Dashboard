@@ -124,7 +124,7 @@ if not filtered.empty:
         file_name=f"{station}_klimaatdata.csv",
         mime="text/csv"
     )
-    # 📤 Grafieken exporteren
+  # 📤 Grafieken exporteren
 fig_paths = {}
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
@@ -214,4 +214,4 @@ st.download_button(
     data=pdf_buffer.getvalue(),
     file_name=f"{station}_klimaatrapport.pdf",
     mime="application/pdf"
-)
+)  
