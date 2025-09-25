@@ -11,12 +11,15 @@ from reportlab.lib.units import cm
 # 📥 Laad het Excel-bestand
 df = pd.read_excel("data/Klimaatdata.xlsx")
 
+st.write("📋 Kolommen in Excel-bestand:", df.columns.tolist())
+
 # 🧼 Forceer numeriek datatype
-for kolom in [
-    "Temperature", "RH", "Total Cloud Coverage",
-    "Wind direction", "Wind Velocity", "Pressure"
-]:
-    df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
+verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
+for kolom in verwachte_kolommen:
+    if kolom in df.columns:
+        df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
+    else:
+        st.warning(f"⚠️ Kolom ontbreekt in Excel: '{kolom}'")
 
 # 🧼 Zet '00z', '01z', … om naar 'HH:MM'
 df["TijdUTC"] = df["Time"].astype(str).str.replace("z", "", regex=False).str.zfill(2) + ":00"
