@@ -58,7 +58,7 @@ if not filtered.empty:
     st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
 
 # 📊 Temperature
-if not filtered.empty and "Temperature" in filtered.columns and not filtered["Temperature"].dropna().empty:
+if "Temperature" in filtered.columns and not filtered["Temperature"].dropna().empty:
     temp_chart = alt.Chart(filtered.dropna(subset=["Temperature"])).mark_line().encode(
         x="Datum:T",
         y="Temperature:Q",
@@ -242,27 +242,21 @@ if not filtered.empty:
     c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
     c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
 
-   y = 26.6*cm
-for label, value in [
-    ("Gem. temperatuur (°C)", filtered["Temperature"].mean()),
-    ("Gem. relatieve vochtigheid (%)", filtered["RH"].mean()),
-    ("Gem. windsnelheid (knopen)", filtered["Wind Velocity"].mean()),
-    ("Gem. luchtdruk (hPa)", filtered["Pressure"].mean()),
-    ("Gem. bewolking (oktas)", filtered["Total Cloud Coverage"].mean())
-]:
-    if pd.notna(value):
-        c.drawString(2*cm, y, f"{label}: {value:.1f}")
-        y -= 0.6*cm
-
-    draw_metric("Gem. temperatuur (°C)", filtered["Temperature"].mean())
-    draw_metric("Gem. relatieve vochtigheid (%)", filtered["RH"].mean())
-    draw_metric("Gem. windsnelheid (knopen)", filtered["Wind Velocity"].mean())
-    draw_metric("Gem. luchtdruk (hPa)", filtered["Pressure"].mean())
-    draw_metric("Gem. bewolking (oktas)", filtered["Total Cloud Coverage"].mean())
+    # 📌 Samenvatting
+    y = 26.6 * cm
+    for label, value in [
+        ("Gem. temperatuur (°C)", filtered["Temperature"].mean()),
+        ("Gem. relatieve vochtigheid (%)", filtered["RH"].mean()),
+        ("Gem. windsnelheid (knopen)", filtered["Wind Velocity"].mean()),
+        ("Gem. luchtdruk (hPa)", filtered["Pressure"].mean()),
+        ("Gem. bewolking (oktas)", filtered["Total Cloud Coverage"].mean())
+    ]:
+        if pd.notna(value):
+            c.drawString(2 * cm, y, f"{label}: {value:.1f}")
+            y -= 0.6 * cm
 
     # 📊 Voeg grafieken toe aan PDF
     grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
-    pagina_grafieken = 0
     for i, key in enumerate(grafiek_volgorde):
         if key in fig_paths:
             y_pos = 17*cm - (8.5*cm * (i % 3))
