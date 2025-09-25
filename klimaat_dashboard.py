@@ -11,9 +11,10 @@ from reportlab.lib.units import cm
 # 📥 Laad het Excel-bestand
 df = pd.read_excel("data/Klimaatdata.xlsx")
 
+# 📋 Controleer kolomnamen
 st.write("📋 Kolommen in Excel-bestand:", df.columns.tolist())
 
-# 🧼 Forceer numeriek datatype
+# 🧼 Forceer numeriek datatype alleen als kolom bestaat
 verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
 for kolom in verwachte_kolommen:
     if kolom in df.columns:
@@ -60,76 +61,32 @@ st.title("🌦️ Klimaat per station – testversie")
 if not filtered.empty:
     st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
 
-# 📊 Temperature
-if "Temperature" in filtered.columns and not filtered["Temperature"].dropna().empty:
-    temp_chart = alt.Chart(filtered.dropna(subset=["Temperature"])).mark_line().encode(
-        x="Datum:T",
-        y="Temperature:Q",
-        color=alt.value("orange"),
-        tooltip=[
-            alt.Tooltip("Datum:T", title="Datum & Tijd"),
-            alt.Tooltip("Temperature:Q", title="Temperatuur (°C)")
-        ]
-    ).properties(title="Gemiddelde temperatuur per dag (°C)")
-    st.altair_chart(temp_chart, use_container_width=True)
-else:
-    st.info("📭 Geen temperatuurdata beschikbaar.")
+# 📊 Grafieken
+def plot_element(kolom, kleur, titel, eenheid, chart_type="line"):
+    if kolom in filtered.columns and not filtered[kolom].dropna().empty:
+        data = filtered.dropna(subset=[kolom])
+        if chart_type == "line":
+            chart = alt.Chart(data).mark_line(color=kleur).encode(
+                x="Datum:T",
+                y=f"{kolom}:Q",
+                tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
+            ).properties(title=f"{titel} per dag ({eenheid})")
+        else:
+            chart = alt.Chart(data).mark_bar(color=kleur).encode(
+                x="Datum:T",
+                y=f"{kolom}:Q",
+                tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
+            ).properties(title=f"{titel} per dag ({eenheid})")
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
-# 💧 RH
-if "RH" in filtered.columns and not filtered["RH"].dropna().empty:
-    rh_chart = alt.Chart(filtered.dropna(subset=["RH"])).mark_line(color="blue").encode(
-        x="Datum:T",
-        y="RH:Q",
-        tooltip=[
-            alt.Tooltip("Datum:T", title="Datum & Tijd"),
-            alt.Tooltip("RH:Q", title="Relatieve vochtigheid (%)")
-        ]
-    ).properties(title="Relatieve vochtigheid per dag (%)")
-    st.altair_chart(rh_chart, use_container_width=True)
-else:
-    st.info("📭 Geen vochtigheidsdata beschikbaar.")
-
-# ☁️ Bewolking
-if "Total Cloud Coverage" in filtered.columns and not filtered["Total Cloud Coverage"].dropna().empty:
-    cloud_chart = alt.Chart(filtered.dropna(subset=["Total Cloud Coverage"])).mark_bar(color="lightblue").encode(
-        x="Datum:T",
-        y="Total Cloud Coverage:Q",
-        tooltip=[
-            alt.Tooltip("Datum:T", title="Datum & Tijd"),
-            alt.Tooltip("Total Cloud Coverage:Q", title="Bewolking (oktas)")
-        ]
-    ).properties(title="Totale bewolking per dag (oktas)")
-    st.altair_chart(cloud_chart, use_container_width=True)
-else:
-    st.info("📭 Geen bewolkingsdata beschikbaar.")
-
-# 💨 Windsnelheid
-if "Wind Velocity" in filtered.columns and not filtered["Wind Velocity"].dropna().empty:
-    wind_chart = alt.Chart(filtered.dropna(subset=["Wind Velocity"])).mark_line(color="gray").encode(
-        x="Datum:T",
-        y="Wind Velocity:Q",
-        tooltip=[
-            alt.Tooltip("Datum:T", title="Datum & Tijd"),
-            alt.Tooltip("Wind Velocity:Q", title="Windsnelheid (knopen)")
-        ]
-    ).properties(title="Windsnelheid per dag (knopen)")
-    st.altair_chart(wind_chart, use_container_width=True)
-else:
-    st.info("📭 Geen windsnelheidsdata beschikbaar.")
-
-# 🧭 Windrichting
-if "Wind direction" in filtered.columns and not filtered["Wind direction"].dropna().empty:
-    dir_chart = alt.Chart(filtered.dropna(subset=["Wind direction"])).mark_line(color="purple").encode(
-        x="Datum:T",
-        y="Wind direction:Q",
-        tooltip=[
-            alt.Tooltip("Datum:T", title="Datum & Tijd"),
-            alt.Tooltip("Wind direction:Q", title="Windrichting (°)")
-        ]
-    ).properties(title="Windrichting per dag (°)")
-    st.altair_chart(dir_chart, use_container_width=True)
-else:
-    st.info("📭 Geen windrichtingsdata beschikbaar.")
+plot_element("Temperature", "orange", "Temperatuur", "°C")
+plot_element("RH", "blue", "Relatieve vochtigheid", "%")
+plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas", chart_type="bar")
+plot_element("Pressure", "green", "Luchtdruk", "hPa")
+plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
+plot_element("Wind direction", "purple", "Windrichting", "°")
 
 # 🧭 Windroos
 if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
@@ -185,42 +142,26 @@ if not filtered.empty:
         plt.close(fig)
         fig_paths[name] = path
 
-    if "Temperature" in filtered.columns and not filtered["Temperature"].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.plot(filtered["Datum"], filtered["Temperature"], color="orange")
-        ax.set_title("Temperatuur per dag")
-        save_plot(fig, "temp")
+    grafieken = {
+        "temp": ("Temperature", "orange", "Temperatuur per dag"),
+        "rh": ("RH", "blue", "Relatieve vochtigheid per dag"),
+        "pressure": ("Pressure", "green", "Luchtdruk per dag"),
+        "wind": ("Wind Velocity", "gray", "Windsnelheid per dag"),
+        "dir": ("Wind direction", "purple", "Windrichting per dag"),
+        "cloud": ("Total Cloud Coverage", "lightblue", "Bewolking per dag")
+    }
 
-    if "RH" in filtered.columns and not filtered["RH"].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.plot(filtered["Datum"], filtered["RH"], color="blue")
-        ax.set_title("Relatieve vochtigheid per dag")
-        save_plot(fig, "rh")
+    for key, (kolom, kleur, titel) in grafieken.items():
+        if kolom in filtered.columns and not filtered[kolom].dropna().empty:
+            fig, ax = plt.subplots()
+            if key == "cloud":
+                ax.bar(filtered["Datum"], filtered[kolom], color=kleur)
+            else:
+                ax.plot(filtered["Datum"], filtered[kolom], color=kleur)
+            ax.set_title(titel)
+            save_plot(fig, key)
 
-    if "Pressure" in filtered.columns and not filtered["Pressure"].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.plot(filtered["Datum"], filtered["Pressure"], color="green")
-        ax.set_title("Luchtdruk per dag")
-        save_plot(fig, "pressure")
-
-    if "Wind Velocity" in filtered.columns and not filtered["Wind Velocity"].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.plot(filtered["Datum"], filtered["Wind Velocity"], color="gray")
-        ax.set_title("Windsnelheid per dag")
-        save_plot(fig, "wind")
-
-    if "Wind direction" in filtered.columns and not filtered["Wind direction"].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.plot(filtered["Datum"], filtered["Wind direction"], color="purple")
-        ax.set_title("Windrichting per dag")
-        save_plot(fig, "dir")
-
-    if "Total Cloud Coverage" in filtered.columns and not filtered["Total Cloud Coverage"].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.bar(filtered["Datum"], filtered["Total Cloud Coverage"], color="lightblue")
-        ax.set_title("Bewolking per dag")
-        save_plot(fig, "cloud")
-
+    # Windroos apart
     if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
         windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
         windroos_data.dropna(inplace=True)
@@ -247,16 +188,18 @@ if not filtered.empty:
 
     # 📌 Samenvatting
     y = 26.6 * cm
-    for label, value in [
-        ("Gem. temperatuur (°C)", filtered["Temperature"].mean()),
-        ("Gem. relatieve vochtigheid (%)", filtered["RH"].mean()),
-        ("Gem. windsnelheid (knopen)", filtered["Wind Velocity"].mean()),
-        ("Gem. luchtdruk (hPa)", filtered["Pressure"].mean()),
-        ("Gem. bewolking (oktas)", filtered["Total Cloud Coverage"].mean())
+    for label, kolom in [
+        ("Gem. temperatuur (°C)", "Temperature"),
+        ("Gem. relatieve vochtigheid (%)", "RH"),
+        ("Gem. windsnelheid (knopen)", "Wind Velocity"),
+        ("Gem. luchtdruk (hPa)", "Pressure"),
+        ("Gem. bewolking (oktas)", "Total Cloud Coverage")
     ]:
-        if pd.notna(value):
-            c.drawString(2 * cm, y, f"{label}: {value:.1f}")
-            y -= 0.6 * cm
+        if kolom in filtered.columns:
+            value = filtered[kolom].mean()
+            if pd.notna(value):
+                c.drawString(2 * cm, y, f"{label}: {value:.1f}")
+                y -= 0.6 * cm
 
     # 📊 Voeg grafieken toe aan PDF
     grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
