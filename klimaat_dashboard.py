@@ -11,13 +11,13 @@ from reportlab.lib.units import cm
 # 📥 Data inladen
 df = pd.read_excel("data/Klimaatdata.xlsx")
 
-# 🧼 Kolommen converteren naar numeriek (indien aanwezig)
+# 🧼 Kolommen converteren naar numeriek
 verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
 for kolom in verwachte_kolommen:
     if kolom in df.columns:
         df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
 
-# 🧼 Tijd en datum samenvoegen
+# 🧼 Datumkolom opbouwen
 df["TijdUTC"] = df["Time"].astype(str).str.replace("z", "", regex=False).str.zfill(2) + ":00"
 df["Datum"] = pd.to_datetime(
     df["Year"].astype(str) + "-" +
@@ -45,7 +45,6 @@ if isinstance(datum_range, list) and len(datum_range) == 2:
         (df["Datum"].dt.date <= pd.to_datetime(end_date).date())
     ]
 else:
-    st.warning("⚠️ Selecteer een geldig datumbereik.")
     filtered = pd.DataFrame()
 
 # 📅 Metadata
@@ -124,7 +123,7 @@ if not filtered.empty:
         file_name=f"{station}_klimaatdata.csv",
         mime="text/csv"
     )
-  # 📤 Grafieken exporteren
+    # 📤 Grafieken exporteren
 fig_paths = {}
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
@@ -214,4 +213,4 @@ st.download_button(
     data=pdf_buffer.getvalue(),
     file_name=f"{station}_klimaatrapport.pdf",
     mime="application/pdf"
-)  
+)
