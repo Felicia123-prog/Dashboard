@@ -34,6 +34,7 @@ st.sidebar.title("🔎 Filteropties")
 station = st.sidebar.selectbox("Selecteer een station", df["StationID"].unique())
 datum_range = st.sidebar.date_input("Selecteer een datumbereik", [df["Datum"].min().date(), df["Datum"].max().date()])
 station = str(station)
+start_date, end_date = None, None
 
 # 🧮 Filtering
 if isinstance(datum_range, list) and len(datum_range) == 2:
@@ -121,9 +122,8 @@ if not filtered.empty:
         mime="text/csv"
     )
 
-# 📄 PDF-export
+# 📤 Grafieken exporteren
 fig_paths = {}
-
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
     fig.savefig(path)
@@ -165,12 +165,17 @@ if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
             ax.set_theta_direction(-1)
             ax.set_title("Windroos – Windsnelheid per richting")
             save_plot(fig, "roos")
-
+    # 📄 Genereer PDF-rapport
 pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
-c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
+
+# ✅ Veilige datumweergave
+if start_date and end_date:
+    c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
+else:
+    c.drawString(2*cm, 27.3*cm, "Periode: —")
 
 # 📌 Samenvatting
 y = 26.6 * cm
@@ -206,4 +211,4 @@ st.download_button(
     data=pdf_buffer.getvalue(),
     file_name=f"{station}_klimaatrapport.pdf",
     mime="application/pdf"
-)
+)        
