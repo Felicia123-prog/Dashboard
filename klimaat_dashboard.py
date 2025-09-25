@@ -32,7 +32,7 @@ df["StationID"] = df["StationID"].astype(str)
 # 🎛️ Sidebarfilters
 st.sidebar.title("🔎 Filteropties")
 station = st.sidebar.selectbox("Selecteer een station", df["StationID"].unique())
-weergave = st.sidebar.radio("Weergave", ["Binnen één dag", "Dagelijkse samenvatting"])
+weergave = st.sidebar.radio("Weergave", ["Binnen één dag", "Datumreeks (samenvatting)"])
 
 # 📅 Filtering
 filtered = pd.DataFrame()
@@ -56,7 +56,7 @@ else:
             (df["Datum"].dt.date >= pd.to_datetime(start_date).date()) &
             (df["Datum"].dt.date <= pd.to_datetime(end_date).date())
         ]
-        st.title("🌦️ Klimaat per station – dagelijkse samenvatting")
+        st.title("🌦️ Klimaat per station – samenvatting per dag")
         st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
 
 # 🧪 Fallback
@@ -65,31 +65,33 @@ if filtered.empty:
     st.stop()
 
 # 📊 Visualisatie
-def plot_element(kolom, kleur, titel, eenheid, chart_type="line", samenvatting=False):
+def plot_element(kolom, kleur, titel, eenheid):
     if kolom in filtered.columns and not filtered[kolom].dropna().empty:
-        data = filtered.dropna(subset=[kolom])
-        if samenvatting:
-            data = data.copy()
+        if weergave == "Datumreeks (samenvatting)":
+            data = filtered.copy()
             data["Dag"] = data["Datum"].dt.date
-            data = data.groupby("Dag")[kolom].mean().reset_index()
-            x_col = "Dag:T"
+            daggemiddeld = data.groupby("Dag")[kolom].mean().reset_index()
+            chart = alt.Chart(daggemiddeld).mark_line(color=kleur).encode(
+                x="Dag:T",
+                y=f"{kolom}:Q",
+                tooltip=[alt.Tooltip("Dag:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
+            ).properties(title=f"{titel} per dag ({eenheid})")
         else:
-            x_col = "Datum:T"
-        chart = alt.Chart(data).mark_line(color=kleur).encode(
-            x=x_col,
-            y=f"{kolom}:Q",
-            tooltip=[alt.Tooltip(x_col), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
-        ).properties(title=f"{titel} ({eenheid})")
+            chart = alt.Chart(filtered.dropna(subset=[kolom])).mark_line(color=kleur).encode(
+                x="Datum:T",
+                y=f"{kolom}:Q",
+                tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
+            ).properties(title=f"{titel} binnen dag ({eenheid})")
         st.altair_chart(chart, use_container_width=True)
     else:
         st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
-plot_element("Temperature", "orange", "Temperatuur", "°C", samenvatting=(weergave == "Dagelijkse samenvatting"))
-plot_element("RH", "blue", "Relatieve vochtigheid", "%", samenvatting=(weergave == "Dagelijkse samenvatting"))
-plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas", samenvatting=(weergave == "Dagelijkse samenvatting"))
-plot_element("Pressure", "green", "Luchtdruk", "hPa", samenvatting=(weergave == "Dagelijkse samenvatting"))
-plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen", samenvatting=(weergave == "Dagelijkse samenvatting"))
-plot_element("Wind direction", "purple", "Windrichting", "°", samenvatting=(weergave == "Dagelijkse samenvatting"))
+plot_element("Temperature", "orange", "Temperatuur", "°C")
+plot_element("RH", "blue", "Relatieve vochtigheid", "%")
+plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas")
+plot_element("Pressure", "green", "Luchtdruk", "hPa")
+plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
+plot_element("Wind direction", "purple", "Windrichting", "°")
 
 # 📌 Samenvatting
 st.subheader("📌 Samenvatting")
@@ -126,40 +128,45 @@ grafieken = {
 for key, (kolom, kleur, titel) in grafieken.items():
     if kolom in filtered.columns and not filtered[kolom].dropna().empty:
         fig, ax = plt.subplots()
-        if weergave == "Dagelijkse samenvatting":
+        if weergave == "Datumreeks (samenvatting)":
             data = filtered.copy()
             data["Dag"] = data["Datum"].dt.date
             daggemiddeld = data.groupby("Dag")[kolom].mean()
             ax.plot(daggemiddeld.index, daggemiddeld.values, color=kleur)
+            ax.set_title(f"{titel} – samenvatting per dag")
         else:
             ax.plot(filtered["Datum"], filtered[kolom], color=kleur)
-        ax.set_title(f"{titel} – {'samenvatting' if weergave == 'Dagelijkse samenvatting' else 'verloop binnen dag'}")
+            ax.set_title(f"{titel} – verloop binnen dag")
         save_plot(fig, key)
 
 # 🧭 Windroos exporteren
-if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
+if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
+    filtered["WindDirBin"] = pd.cut(
+        filtered["Wind direction"],
+        bins=np.arange(0, 361, 30),
+        labels=[f"{i}°–{i+30}°" for i in range(0, 360, 30)],
+        include_lowest=True
+    )
     windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
     windroos_data.dropna(inplace=True)
-    if not windroos_data.empty:
-        def bin_to_angle(label):
-            start = int(label.split("°")[0])
-            return np.deg2rad(start + 15)
-        angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
-        speeds = windroos_data["Wind Velocity"].values
-        if len(angles) == len(speeds):
-            fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-            ax.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
-            ax.set_theta_zero_location("N")
-            ax.set_theta_direction(-1)
-            ax.set_title("Windroos – Windsnelheid per richting")
-            save_plot(fig, "roos")
+    def bin_to_angle(label):
+        start = int(label.split("°")[0])
+        return np.deg2rad(start + 15)
+    angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
+    speeds = windroos_data["Wind Velocity"].values
+    if len(angles) == len(speeds):
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        ax.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
+        ax.set_theta_zero_location("N")
+        ax.set_theta_direction(-1)
+        ax.set_title("Windroos – Windsnelheid per richting")
+        save_plot(fig, "roos")
 
 # 📄 PDF-generatie
 pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
-
 if weergave == "Binnen één dag":
     c.drawString(2*cm, 27.3*cm, f"Datum: {datum_keuze}")
 else:
