@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 import io
 import matplotlib.pyplot as plt
+import numpy as np
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm
@@ -102,6 +103,60 @@ if not filtered["Total Cloud Coverage"].dropna().empty:
 else:
     st.info("📭 Geen bewolkingsdata beschikbaar voor deze selectie.")
 
+# 💧 Relatieve vochtigheid
+if not filtered["RH"].dropna().empty:
+    rh_chart = alt.Chart(filtered).mark_line(color="blue").encode(
+        x="Datum:T",
+        y="RH:Q",
+        tooltip=[
+            alt.Tooltip("Datum:T", title="Datum & Tijd"),
+            alt.Tooltip("RH:Q", title="Relatieve vochtigheid (%)")
+        ]
+    ).properties(title="Relatieve vochtigheid per dag (%)")
+    st.altair_chart(rh_chart, use_container_width=True)
+else:
+    st.info("📭 Geen vochtigheidsdata beschikbaar voor deze selectie.")
+
+# 🧭 Windrichting
+if not filtered["Wind direction"].dropna().empty:
+    dir_chart = alt.Chart(filtered).mark_line(color="purple").encode(
+        x="Datum:T",
+        y="Wind direction:Q",
+        tooltip=[
+            alt.Tooltip("Datum:T", title="Datum & Tijd"),
+            alt.Tooltip("Wind direction:Q", title="Windrichting (°)")
+        ]
+    ).properties(title="Windrichting per dag (°)")
+    st.altair_chart(dir_chart, use_container_width=True)
+else:
+    st.info("📭 Geen windrichtingsdata beschikbaar voor deze selectie.")
+
+# 🧭 Windroos
+if not filtered["Wind direction"].dropna().empty and not filtered["Wind Velocity"].dropna().empty:
+    filtered["WindDirBin"] = pd.cut(
+        filtered["Wind direction"],
+        bins=np.arange(0, 361, 30),
+        labels=[f"{i}°–{i+30}°" for i in range(0, 360, 30)],
+        include_lowest=True
+    )
+
+    windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
+    windroos_data.dropna(inplace=True)
+
+    angles = np.deg2rad(np.arange(0, 360, 30))
+    speeds = windroos_data["Wind Velocity"].values
+
+    fig_roos, ax_roos = plt.subplots(subplot_kw={'projection': 'polar'})
+    bars = ax_roos.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
+
+    ax_roos.set_theta_zero_location("N")
+    ax_roos.set_theta_direction(-1)
+    ax_roos.set_title("🌬️ Windroos – Windsnelheid per richting", va='bottom')
+
+    st.pyplot(fig_roos)
+else:
+    st.info("📭 Geen windroos mogelijk – ontbrekende richting of snelheid.")
+
 # 📌 Samenvattende indicatoren
 st.subheader("📌 Samenvatting")
 col1, col2, col3 = st.columns(3)
@@ -118,67 +173,56 @@ if not filtered.empty:
         mime="text/csv"
     )
 
-    # 📤 Genereer grafiekafbeeldingen
-    fig_paths = {}
+   # 📤 Genereer PDF-rapport
+pdf_buffer = io.BytesIO()
+c = canvas.Canvas(pdf_buffer, pagesize=A4)
+c.setFont("Helvetica", 12)
+c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
+c.drawString(2*cm, 27.3*cm, f"Periode: {datum_range[0]} tot {datum_range[1]}")
 
-    if not filtered["DryBulb T."].dropna().empty:
-        fig1, ax1 = plt.subplots()
-        ax1.plot(filtered["Datum"], filtered["DryBulb T."], label="Gem. temperatuur (°C)", color="orange")
-        ax1.set_title("Temperatuur per dag")
-        ax1.legend()
-        fig_paths["temp"] = f"{station}_temp.png"
-        fig1.savefig(fig_paths["temp"])
-        plt.close(fig1)
+# 📌 Samenvatting
+y = 26.6*cm
+for label, value in [
+    ("Gem. temperatuur (°C)", filtered["DryBulb T."].mean()),
+    ("Gem. relatieve vochtigheid (%)", filtered["RH"].mean()),
+    ("Gem. windsnelheid (knopen)", filtered["Wind Velocity"].mean()),
+    ("Gem. luchtdruk (hPa)", filtered["Pressure"].mean()),
+    ("Gem. bewolking (oktas)", filtered["Total Cloud Coverage"].mean())
+]:
+    if pd.notna(value):
+        c.drawString(2*cm, y, f"{label}: {value:.1f}")
+        y -= 0.6*cm
 
-    if not filtered["Wind Velocity"].dropna().empty:
-        fig2, ax2 = plt.subplots()
-        ax2.plot(filtered["Datum"], filtered["Wind Velocity"], label="Windsnelheid (knopen)", color="gray")
-        ax2.set_title("Windsnelheid per dag")
-        ax2.legend()
-        fig_paths["wind"] = f"{station}_wind.png"
-        fig2.savefig(fig_paths["wind"])
-        plt.close(fig2)
+if not filtered["DryBulb T."].dropna().empty:
+    draw_metric("Gem. temperatuur (°C)", filtered["DryBulb T."].mean())
+if not filtered["RH"].dropna().empty:
+    draw_metric("Gem. relatieve vochtigheid (%)", filtered["RH"].mean())
+if not filtered["Wind Velocity"].dropna().empty:
+    draw_metric("Gem. windsnelheid (knopen)", filtered["Wind Velocity"].mean())
+if not filtered["Pressure"].dropna().empty:
+    draw_metric("Gem. luchtdruk (hPa)", filtered["Pressure"].mean())
+if not filtered["Total Cloud Coverage"].dropna().empty:
+    draw_metric("Gem. bewolking (oktas)", filtered["Total Cloud Coverage"].mean())
 
-    if not filtered["Total Cloud Coverage"].dropna().empty:
-        fig3, ax3 = plt.subplots()
-        ax3.bar(filtered["Datum"], filtered["Total Cloud Coverage"], color="lightblue")
-        ax3.set_title("Bewolking per dag")
-        fig_paths["cloud"] = f"{station}_cloud.png"
-        fig3.savefig(fig_paths["cloud"])
-        plt.close(fig3)
+# 📊 Voeg grafieken toe aan PDF
+grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
+pagina_grafieken = 0
+for i, key in enumerate(grafiek_volgorde):
+    if key in fig_paths:
+        y_pos = 17*cm - (8.5*cm * (i % 3))
+        c.drawImage(fig_paths[key], 2*cm, y_pos, width=16*cm, height=8*cm)
+        if (i + 1) % 3 == 0:
+            c.showPage()
+            c.setFont("Helvetica", 12)
 
-        # 📄 Genereer PDF-rapport
-    pdf_buffer = io.BytesIO()
-    c = canvas.Canvas(pdf_buffer, pagesize=A4)
-    c.setFont("Helvetica", 12)
-    c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
-    c.drawString(2*cm, 27.3*cm, f"Periode: {datum_range[0]} tot {datum_range[1]}")
+# 📄 Sluit PDF af
+c.showPage()
+c.save()
 
-    if not filtered["DryBulb T."].dropna().empty:
-        c.drawString(2*cm, 26.6*cm, f"Gem. temperatuur: {filtered['DryBulb T.'].mean():.1f} °C")
-    if not filtered["RH"].dropna().empty:
-        c.drawString(2*cm, 26*cm, f"Gem. relatieve vochtigheid: {filtered['RH'].mean():.1f} %")
-    if not filtered["Wind Velocity"].dropna().empty:
-        c.drawString(2*cm, 25.3*cm, f"Gem. windsnelheid: {filtered['Wind Velocity'].mean():.1f} knopen")
-    if not filtered["Pressure"].dropna().empty:
-        c.drawString(2*cm, 24.6*cm, f"Gem. luchtdruk: {filtered['Pressure'].mean():.1f} hPa")
-    if not filtered["Total Cloud Coverage"].dropna().empty:
-        c.drawString(2*cm, 24*cm, f"Gem. bewolking: {filtered['Total Cloud Coverage'].mean():.1f} oktas")
-
-    if "temp" in fig_paths:
-        c.drawImage(fig_paths["temp"], 2*cm, 17*cm, width=16*cm, height=8*cm)
-    if "wind" in fig_paths:
-        c.drawImage(fig_paths["wind"], 2*cm, 8.5*cm, width=16*cm, height=8*cm)
-    if "cloud" in fig_paths:
-        c.drawImage(fig_paths["cloud"], 2*cm, 0.5*cm, width=16*cm, height=8*cm)
-
-    c.showPage()
-    c.save()
-
-    # 📥 Downloadknop voor PDF
-    st.download_button(
-        label="📄 Download visueel rapport (PDF)",
-        data=pdf_buffer.getvalue(),
-        file_name=f"{station}_klimaatrapport.pdf",
-        mime="application/pdf"
-    )
+# 📥 Downloadknop voor PDF
+st.download_button(
+    label="📄 Download visueel rapport (PDF)",
+    data=pdf_buffer.getvalue(),
+    file_name=f"{station}_klimaatrapport.pdf",
+    mime="application/pdf"
+)
