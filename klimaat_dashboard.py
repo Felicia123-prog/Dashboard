@@ -10,20 +10,27 @@ from reportlab.lib.units import cm
 # 📥 Stap 1: Laad het Excel-bestand
 df = pd.read_excel("data/Klimaatdata.xlsx")
 
-# 🧼 Stap 2: Bouw een volledige datetime-kolom
+# 🧼 Stap 2: Zet '00z', '01z', … om naar 'HH:MM'
+df["TijdUTC"] = df["Time"].astype(str).str.replace("z", "", regex=False).str.zfill(2) + ":00"
+
+# 🧼 Stap 3: Bouw veilige datetime-kolom
 df["Datum"] = pd.to_datetime(
     df["Year"].astype(str) + "-" +
     df["Month"].astype(str).str.zfill(2) + "-" +
     df["Day"].astype(str).str.zfill(2) + " " +
-    df["Time"].astype(str)
+    df["TijdUTC"],
+    errors="coerce"
 )
 
-# 🎛️ Stap 3: Sidebarfilters
+# 🧼 Stap 4: Verwijder ongeldige datums
+df = df.dropna(subset=["Datum"])
+
+# 🎛️ Stap 5: Sidebarfilters
 st.sidebar.title("🔎 Filteropties")
 station = st.sidebar.selectbox("Selecteer een station", df["StationID"].unique())
 datum_range = st.sidebar.date_input("Selecteer een datumbereik", [df["Datum"].min().date(), df["Datum"].max().date()])
 
-# 🧮 Stap 4: Filter de data op datum (tijd blijft zichtbaar)
+# 🧮 Stap 6: Filter de data op datum (tijd blijft zichtbaar)
 if isinstance(datum_range, tuple) and len(datum_range) == 2:
     filtered = df[
         (df["StationID"] == station) &
@@ -35,14 +42,14 @@ else:
     filtered = pd.DataFrame()
 
 # 📅 Laatste datum in dataset
-st.markdown(f"📅 Laatste datum in dataset: **{df['Datum'].max().strftime('%d %B %Y %H:%M')}**")
+st.markdown(f"📅 Laatste datum in dataset: **{df['Datum'].max().strftime('%d %B %Y %H:%M')} UTC**")
 
-# 🧾 Stap 5: Titel en metadata
+# 🧾 Stap 7: Titel en metadata
 st.title("🌦️ Klimaat per station – testversie")
 if not filtered.empty:
     st.markdown(f"**Station:** {station}  \n**Periode:** {datum_range[0]} tot {datum_range[1]}")
 
-# 📊 Stap 6: Temperatuurgrafiek
+# 📊 Stap 8: Temperatuurgrafiek
 if not filtered.empty:
     temp_chart = alt.Chart(filtered).mark_line().encode(
         x="Datum:T",
@@ -57,7 +64,7 @@ if not filtered.empty:
     ).properties(title="Gemiddelde temperatuur per dag (°C)")
     st.altair_chart(temp_chart, use_container_width=True)
 
-    # 💨 Stap 7: Windsnelheid
+    # 💨 Windsnelheid
     wind_chart = alt.Chart(filtered).mark_line(color="gray").encode(
         x="Datum:T",
         y="Wind Velocity:Q",
@@ -69,7 +76,7 @@ if not filtered.empty:
     ).properties(title="Windsnelheid per dag (knopen)")
     st.altair_chart(wind_chart, use_container_width=True)
 
-    # ☁️ Stap 8: Bewolking
+    # ☁️ Bewolking
     cloud_chart = alt.Chart(filtered).mark_bar(color="lightblue").encode(
         x="Datum:T",
         y="Total Cloud Coverage:Q",
@@ -80,7 +87,7 @@ if not filtered.empty:
     ).properties(title="Totale bewolking per dag (oktas)")
     st.altair_chart(cloud_chart, use_container_width=True)
 
-    # 📌 Stap 9: Samenvattende indicatoren
+    # 📌 Samenvattende indicatoren
     st.subheader("📌 Samenvatting")
     col1, col2, col3 = st.columns(3)
     col1.metric("Gem. temperatuur (°C)", f"{filtered['DryBulb T.'].mean():.1f}")
@@ -90,7 +97,7 @@ if not filtered.empty:
 else:
     st.warning("⚠️ Er zijn geen gegevens beschikbaar voor deze selectie.")
 
-# 📥 Stap 10: Download als CSV
+# 📥 Download als CSV
 if not filtered.empty:
     st.download_button(
         label="📥 Download als CSV",
@@ -99,7 +106,7 @@ if not filtered.empty:
         mime="text/csv"
     )
 
-    # 📤 Stap 11: Genereer grafiekafbeeldingen
+    # 📤 Genereer grafiekafbeeldingen
     fig1, ax1 = plt.subplots()
     ax1.plot(filtered["Datum"], filtered["DryBulb T."], label="Gem. temperatuur (°C)", color="orange")
     ax1.set_title("Temperatuur per dag")
@@ -123,7 +130,7 @@ if not filtered.empty:
     fig3.savefig(cloud_path)
     plt.close(fig3)
 
-    # 📄 Stap 12: Genereer PDF-rapport
+    # 📄 Genereer PDF-rapport
     pdf_buffer = io.BytesIO()
     c = canvas.Canvas(pdf_buffer, pagesize=A4)
     c.setFont("Helvetica", 12)
@@ -142,7 +149,7 @@ if not filtered.empty:
     c.showPage()
     c.save()
 
-    # 📥 Stap 13: Downloadknop voor PDF
+    # 📥 Downloadknop voor PDF
     st.download_button(
         label="📄 Download visueel rapport (PDF)",
         data=pdf_buffer.getvalue(),
