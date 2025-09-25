@@ -8,7 +8,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm
 
 # 📥 Stap 1: Laad het Excel-bestand
-df = pd.read_excel("data/Klimaatdata_Jan_Sep_2025.xlsx")
+df = pd.read_excel("data/Klimaatdata.xlsx")
 
 # 🧼 Stap 2: Zet 'Date' om naar datetime
 df["Date"] = pd.to_datetime(df["Date"])
@@ -28,6 +28,8 @@ if isinstance(datum_range, tuple) and len(datum_range) == 2:
 else:
     st.warning("⚠️ Selecteer een geldig datumbereik met twee datums.")
     filtered = pd.DataFrame()
+
+st.markdown(f"📅 Laatste datum in dataset: **{df['Date'].max().strftime('%d %B %Y')}**")
 
 # 🧾 Stap 5: Titel en metadata
 st.title("🌦️ Klimaat per station – testversie")
@@ -79,19 +81,7 @@ if not filtered.empty:
         mime="text/csv"
     )
 
-    # 📥 Stap 12: Download als Excel
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        filtered.to_excel(writer, index=False, sheet_name='Klimaat')
-
-    st.download_button(
-        label="📥 Download als Excel",
-        data=buffer.getvalue(),
-        file_name=f"{station}_klimaatdata.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-    # 📤 Stap 13: Genereer grafiekafbeeldingen
+    # 📤 Stap 12: Genereer grafiekafbeeldingen
     fig1, ax1 = plt.subplots()
     ax1.plot(filtered["Date"], filtered["AVG_Temp"], label="Gem. temperatuur", color="orange")
     ax1.plot(filtered["Date"], filtered["Max_TemP"], label="Max temperatuur", color="red")
@@ -116,7 +106,7 @@ if not filtered.empty:
     fig3.savefig(wind_path)
     plt.close(fig3)
 
-    # 📄 Stap 14: Genereer PDF-rapport
+    # 📄 Stap 13: Genereer PDF-rapport
     pdf_buffer = io.BytesIO()
     c = canvas.Canvas(pdf_buffer, pagesize=A4)
     c.setFont("Helvetica", 12)
@@ -133,7 +123,7 @@ if not filtered.empty:
     c.showPage()
     c.save()
 
-    # 📥 Stap 15: Downloadknop voor PDF
+    # 📥 Stap 14: Downloadknop voor PDF
     st.download_button(
         label="📄 Download visueel rapport (PDF)",
         data=pdf_buffer.getvalue(),
