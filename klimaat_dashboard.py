@@ -43,8 +43,6 @@ filtered = df[
 
 st.title("🌦️ Klimaat per station – verloop binnen één dag")
 st.markdown(f"**Station:** {station}  \n**Datum:** {datum_keuze}")
-st.write("🔍 Aantal rijen na filtering:", filtered.shape[0])
-st.write("🧪 Voorbeeld temperatuurwaarden:", filtered["Temperature"].dropna().head())
 
 if filtered.empty:
     st.warning("📭 Geen gegevens voor deze selectie. Controleer station en datum.")
@@ -59,8 +57,6 @@ def plot_element(kolom, kleur, titel, eenheid):
             tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
         ).properties(title=f"{titel} binnen dag ({eenheid})")
         st.altair_chart(chart, use_container_width=True)
-    else:
-        st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
 plot_element("Temperature", "orange", "Temperatuur", "°C")
 plot_element("RH", "blue", "Relatieve vochtigheid", "%")
