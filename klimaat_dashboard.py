@@ -90,6 +90,7 @@ def plot_element(kolom, kleur, titel, eenheid):
     else:
         st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
+# 📊 Grafieken tonen
 plot_element("Temperature", "orange", "Temperatuur", "°C")
 plot_element("RH", "blue", "Relatieve vochtigheid", "%")
 plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas")
@@ -158,7 +159,8 @@ for key, (kolom, kleur, titel) in grafieken.items():
             ax.set_title(f"{titel} – verloop binnen dag")
         save_plot(fig, key)
 
-        if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
+# 📤 Windroos exporteren
+if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
     windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
     windroos_data.dropna(inplace=True)
     def bin_to_angle(label):
@@ -174,7 +176,8 @@ for key, (kolom, kleur, titel) in grafieken.items():
         ax.set_title("Windroos – Windsnelheid per richting")
         save_plot(fig, "roos")
 
-        pdf_buffer = io.BytesIO()
+# 📄 PDF-generatie
+pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
@@ -183,7 +186,7 @@ if weergave == "Binnen één dag":
 else:
     c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
 
-# Samenvatting
+# 📌 Samenvatting
 y = 26.6 * cm
 for label, kolom in [
     ("Gem. temperatuur (°C)", "Temperature"),
@@ -198,7 +201,7 @@ for label, kolom in [
             c.drawString(2 * cm, y, f"{label}: {value:.1f}")
             y -= 0.6 * cm
 
-# Grafieken toevoegen
+# 📊 Voeg grafieken toe aan PDF
 grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
 for i, key in enumerate(grafiek_volgorde):
     if key in fig_paths:
@@ -211,7 +214,7 @@ for i, key in enumerate(grafiek_volgorde):
 c.showPage()
 c.save()
 
-# Downloadknoppen
+# 📥 Downloadknop voor PDF
 pdf_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatrapport.pdf"
 st.download_button(
     label="📄 Download visueel rapport (PDF)",
@@ -220,6 +223,7 @@ st.download_button(
     mime="application/pdf"
 )
 
+# 📥 Downloadknop voor CSV
 csv_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatdata.csv"
 st.download_button(
     label="📥 Download als CSV",
