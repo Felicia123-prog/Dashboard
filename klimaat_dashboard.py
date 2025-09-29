@@ -122,7 +122,8 @@ if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
         ax_roos.set_theta_direction(-1)
         ax_roos.set_title("🌬️ Windroos – Windsnelheid per richting", va='bottom')
         st.pyplot(fig_roos)
-        # 📤 Grafieken exporteren
+
+# 📤 Grafieken exporteren
 fig_paths = {}
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
