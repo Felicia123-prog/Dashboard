@@ -157,21 +157,8 @@ for key, (kolom, kleur, titel) in grafieken.items():
 # 📤 Windroos exporteren
 if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
     windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
-    windroos_data.dropna(inplace=True)
-    def bin_to_angle(label):
-        start = int(label.split("°")[0])
-        return np.deg2rad(start + 15)
-    angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
-    speeds = windroos_data["Wind Velocity"].values
-    if len(angles) == len(speeds):
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-        ax.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
-        ax.set_theta_zero_location("N")
-        ax.set_theta_direction(-1)
-        ax.set_title("Windroos – Windsnelheid per richting")
-        save_plot(fig, "roos")
-
-# 📄 PDF-generatie
+   
+   # 📄 PDF-generatie
 pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
@@ -216,4 +203,13 @@ st.download_button(
     data=pdf_buffer.getvalue(),
     file_name=pdf_name,
     mime="application/pdf"
+)
+
+# 📥 Downloadknop voor CSV
+csv_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatdata.csv"
+st.download_button(
+    label="📥 Download als CSV",
+    data=filtered.to_csv(index=False).encode('utf-8'),
+    file_name=csv_name,
+    mime="text/csv"
 )
