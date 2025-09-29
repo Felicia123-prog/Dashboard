@@ -58,10 +58,10 @@ else:
         ]
         st.title("🌦️ Klimaat per station – samenvatting per dag")
         st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
+        st.write("📅 Unieke datums:", filtered["Datum"].dt.date.unique())
 
 # 🧪 Debug
 st.write("🔍 Aantal rijen na filtering:", filtered.shape[0])
-st.write("📅 Unieke datums:", filtered["Datum"].dt.date.unique())
 st.write("🧪 Voorbeeld temperatuurwaarden:", filtered["Temperature"].dropna().head())
 
 if filtered.empty:
