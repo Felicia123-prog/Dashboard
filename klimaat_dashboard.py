@@ -41,7 +41,7 @@ filtered = df[
     (df["Datum"].dt.date == datum_keuze)
 ]
 
-st.title("🌦️ Wat gebeurde er vandaag? – dagverloop verschillende meteorologische elementen binnen één dag")
+st.title("🌦️ Wat gebeurde er vandaag? – dagverloop van verschillende meteorologische elementen")
 st.markdown(f"**Station:** {station}  \n**Datum:** {datum_keuze}")
 
 if filtered.empty:
