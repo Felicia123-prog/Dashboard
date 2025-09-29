@@ -65,13 +65,6 @@ plot_element("Pressure", "green", "Luchtdruk", "hPa")
 plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
 plot_element("Wind direction", "purple", "Windrichting", "°")
 
-# 📌 Samenvatting
-st.subheader("📌 Samenvatting")
-col1, col2, col3 = st.columns(3)
-col1.metric("Gem. temperatuur (°C)", f"{filtered['Temperature'].mean():.1f}" if "Temperature" in filtered.columns else "—")
-col2.metric("Gem. relatieve vocht (%)", f"{filtered['RH'].mean():.1f}" if "RH" in filtered.columns else "—")
-col3.metric("Gem. windsnelheid (knopen)", f"{filtered['Wind Velocity'].mean():.1f}" if "Wind Velocity" in filtered.columns else "—")
-
 # 📊 Windroos op pagina
 if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
     filtered["WindDirBin"] = pd.cut(
@@ -142,21 +135,6 @@ c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
 c.drawString(2*cm, 27.3*cm, f"Datum: {datum_keuze}")
-
-# 📌 Samenvatting
-y = 26.6 * cm
-for label, kolom in [
-    ("Gem. temperatuur (°C)", "Temperature"),
-    ("Gem. relatieve vochtigheid (%)", "RH"),
-    ("Gem. windsnelheid (knopen)", "Wind Velocity"),
-    ("Gem. luchtdruk (hPa)", "Pressure"),
-    ("Gem. bewolking (oktas)", "Total Cloud Coverage")
-]:
-    if kolom in filtered.columns:
-        value = filtered[kolom].mean()
-        if pd.notna(value):
-            c.drawString(2 * cm, y, f"{label}: {value:.1f}")
-            y -= 0.6 * cm
 
 # 📊 Voeg grafieken toe aan PDF
 grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
