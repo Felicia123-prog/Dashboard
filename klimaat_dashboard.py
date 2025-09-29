@@ -100,15 +100,29 @@ col1.metric("Gem. temperatuur (°C)", f"{filtered['Temperature'].mean():.1f}" if
 col2.metric("Gem. relatieve vocht (%)", f"{filtered['RH'].mean():.1f}" if "RH" in filtered.columns else "—")
 col3.metric("Gem. windsnelheid (knopen)", f"{filtered['Wind Velocity'].mean():.1f}" if "Wind Velocity" in filtered.columns else "—")
 
-# 📥 Download als CSV
-csv_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatdata.csv"
-st.download_button(
-    label="📥 Download als CSV",
-    data=filtered.to_csv(index=False).encode('utf-8'),
-    file_name=csv_name,
-    mime="text/csv"
-)
-# 📤 Grafieken exporteren
+# 📊 Windroos op pagina
+if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
+    filtered["WindDirBin"] = pd.cut(
+        filtered["Wind direction"],
+        bins=np.arange(0, 361, 30),
+        labels=[f"{i}°–{i+30}°" for i in range(0, 360, 30)],
+        include_lowest=True
+    )
+    windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
+    windroos_data.dropna(inplace=True)
+    def bin_to_angle(label):
+        start = int(label.split("°")[0])
+        return np.deg2rad(start + 15)
+    angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
+    speeds = windroos_data["Wind Velocity"].values
+    if len(angles) == len(speeds):
+        fig_roos, ax_roos = plt.subplots(subplot_kw={'projection': 'polar'})
+        ax_roos.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
+        ax_roos.set_theta_zero_location("N")
+        ax_roos.set_theta_direction(-1)
+        ax_roos.set_title("🌬️ Windroos – Windsnelheid per richting", va='bottom')
+        st.pyplot(fig_roos)
+        # 📤 Grafieken exporteren
 fig_paths = {}
 def save_plot(fig, name):
     path = f"{station}_{name}.png"
@@ -131,22 +145,16 @@ for key, (kolom, kleur, titel) in grafieken.items():
         if weergave == "Datumreeks (samenvatting)":
             data = filtered.copy()
             data["Dag"] = data["Datum"].dt.date
-            daggemiddeld = data.groupby("Dag")[kolom].mean()
-            ax.plot(daggemiddeld.index, daggemiddeld.values, color=kleur)
+            daggemiddeld = data.groupby("Dag")[kolom].mean().reset_index()
+            ax.plot(daggemiddeld["Dag"], daggemiddeld[kolom], color=kleur)
             ax.set_title(f"{titel} – samenvatting per dag")
         else:
             ax.plot(filtered["Datum"], filtered[kolom], color=kleur)
             ax.set_title(f"{titel} – verloop binnen dag")
         save_plot(fig, key)
 
-# 🧭 Windroos exporteren
-if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
-    filtered["WindDirBin"] = pd.cut(
-        filtered["Wind direction"],
-        bins=np.arange(0, 361, 30),
-        labels=[f"{i}°–{i+30}°" for i in range(0, 360, 30)],
-        include_lowest=True
-    )
+# 📤 Windroos exporteren
+if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
     windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
     windroos_data.dropna(inplace=True)
     def bin_to_angle(label):
