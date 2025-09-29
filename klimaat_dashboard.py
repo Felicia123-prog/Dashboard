@@ -59,7 +59,11 @@ else:
         st.title("🌦️ Klimaat per station – samenvatting per dag")
         st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
 
-# 🧪 Fallback
+# 🧪 Debug
+st.write("🔍 Aantal rijen na filtering:", filtered.shape[0])
+st.write("📅 Unieke datums:", filtered["Datum"].dt.date.unique())
+st.write("🧪 Voorbeeld temperatuurwaarden:", filtered["Temperature"].dropna().head())
+
 if filtered.empty:
     st.warning("📭 Geen gegevens voor deze selectie. Controleer station en datum.")
     st.stop()
@@ -154,12 +158,23 @@ for key, (kolom, kleur, titel) in grafieken.items():
             ax.set_title(f"{titel} – verloop binnen dag")
         save_plot(fig, key)
 
-# 📤 Windroos exporteren
-if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
+        if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
     windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
-   
-   # 📄 PDF-generatie
-pdf_buffer = io.BytesIO()
+    windroos_data.dropna(inplace=True)
+    def bin_to_angle(label):
+        start = int(label.split("°")[0])
+        return np.deg2rad(start + 15)
+    angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
+    speeds = windroos_data["Wind Velocity"].values
+    if len(angles) == len(speeds):
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        ax.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
+        ax.set_theta_zero_location("N")
+        ax.set_theta_direction(-1)
+        ax.set_title("Windroos – Windsnelheid per richting")
+        save_plot(fig, "roos")
+
+        pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
@@ -168,7 +183,7 @@ if weergave == "Binnen één dag":
 else:
     c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
 
-# 📌 Samenvatting
+# Samenvatting
 y = 26.6 * cm
 for label, kolom in [
     ("Gem. temperatuur (°C)", "Temperature"),
@@ -183,7 +198,7 @@ for label, kolom in [
             c.drawString(2 * cm, y, f"{label}: {value:.1f}")
             y -= 0.6 * cm
 
-# 📊 Voeg grafieken toe aan PDF
+# Grafieken toevoegen
 grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
 for i, key in enumerate(grafiek_volgorde):
     if key in fig_paths:
@@ -196,7 +211,7 @@ for i, key in enumerate(grafiek_volgorde):
 c.showPage()
 c.save()
 
-# 📥 Downloadknop voor PDF
+# Downloadknoppen
 pdf_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatrapport.pdf"
 st.download_button(
     label="📄 Download visueel rapport (PDF)",
@@ -205,7 +220,6 @@ st.download_button(
     mime="application/pdf"
 )
 
-# 📥 Downloadknop voor CSV
 csv_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatdata.csv"
 st.download_button(
     label="📥 Download als CSV",
