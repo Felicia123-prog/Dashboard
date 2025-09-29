@@ -90,7 +90,7 @@ def plot_element(kolom, kleur, titel, eenheid):
     else:
         st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
-# 📊 Grafieken tonen
+# 📊 Alle elementen tonen
 plot_element("Temperature", "orange", "Temperatuur", "°C")
 plot_element("RH", "blue", "Relatieve vochtigheid", "%")
 plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas")
