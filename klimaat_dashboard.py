@@ -32,35 +32,17 @@ df["StationID"] = df["StationID"].astype(str)
 # 🎛️ Sidebarfilters
 st.sidebar.title("🔎 Filteropties")
 station = st.sidebar.selectbox("Selecteer een station", df["StationID"].unique())
-weergave = st.sidebar.radio("Weergave", ["Binnen één dag", "Datumreeks (samenvatting)"])
+beschikbare_datums = df[df["StationID"] == station]["Datum"].dt.date.unique()
+datum_keuze = st.sidebar.selectbox("Kies een dag", beschikbare_datums)
 
 # 📅 Filtering
-filtered = pd.DataFrame()
-if weergave == "Binnen één dag":
-    beschikbare_datums = df[df["StationID"] == station]["Datum"].dt.date.unique()
-    datum_keuze = st.sidebar.selectbox("Kies een dag", beschikbare_datums)
-    filtered = df[
-        (df["StationID"] == station) &
-        (df["Datum"].dt.date == datum_keuze)
-    ]
-    st.title("🌦️ Klimaat per station – verloop binnen één dag")
-    st.markdown(f"**Station:** {station}  \n**Datum:** {datum_keuze}")
-else:
-    min_datum = df[df["StationID"] == station]["Datum"].dt.date.min()
-    max_datum = df[df["StationID"] == station]["Datum"].dt.date.max()
-    datum_range = st.sidebar.date_input("Kies een datumbereik", [min_datum, max_datum])
-    if isinstance(datum_range, list) and len(datum_range) == 2:
-        start_date, end_date = datum_range
-        filtered = df[
-            (df["StationID"] == station) &
-            (df["Datum"].dt.date >= pd.to_datetime(start_date).date()) &
-            (df["Datum"].dt.date <= pd.to_datetime(end_date).date())
-        ]
-        st.title("🌦️ Klimaat per station – samenvatting per dag")
-        st.markdown(f"**Station:** {station}  \n**Periode:** {start_date} tot {end_date}")
-        st.write("📅 Unieke datums:", filtered["Datum"].dt.date.unique())
+filtered = df[
+    (df["StationID"] == station) &
+    (df["Datum"].dt.date == datum_keuze)
+]
 
-# 🧪 Debug
+st.title("🌦️ Klimaat per station – verloop binnen één dag")
+st.markdown(f"**Station:** {station}  \n**Datum:** {datum_keuze}")
 st.write("🔍 Aantal rijen na filtering:", filtered.shape[0])
 st.write("🧪 Voorbeeld temperatuurwaarden:", filtered["Temperature"].dropna().head())
 
@@ -71,26 +53,15 @@ if filtered.empty:
 # 📊 Visualisatie
 def plot_element(kolom, kleur, titel, eenheid):
     if kolom in filtered.columns and not filtered[kolom].dropna().empty:
-        if weergave == "Datumreeks (samenvatting)":
-            data = filtered.copy()
-            data["Dag"] = data["Datum"].dt.date
-            daggemiddeld = data.groupby("Dag")[kolom].mean().reset_index()
-            chart = alt.Chart(daggemiddeld).mark_line(color=kleur).encode(
-                x="Dag:T",
-                y=f"{kolom}:Q",
-                tooltip=[alt.Tooltip("Dag:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
-            ).properties(title=f"{titel} per dag ({eenheid})")
-        else:
-            chart = alt.Chart(filtered.dropna(subset=[kolom])).mark_line(color=kleur).encode(
-                x="Datum:T",
-                y=f"{kolom}:Q",
-                tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
-            ).properties(title=f"{titel} binnen dag ({eenheid})")
+        chart = alt.Chart(filtered.dropna(subset=[kolom])).mark_line(color=kleur).encode(
+            x="Datum:T",
+            y=f"{kolom}:Q",
+            tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{kolom}:Q", title=f"{titel} ({eenheid})")]
+        ).properties(title=f"{titel} binnen dag ({eenheid})")
         st.altair_chart(chart, use_container_width=True)
     else:
         st.info(f"📭 Geen data beschikbaar voor: {titel}")
 
-# 📊 Alle elementen tonen
 plot_element("Temperature", "orange", "Temperatuur", "°C")
 plot_element("RH", "blue", "Relatieve vochtigheid", "%")
 plot_element("Total Cloud Coverage", "lightblue", "Bewolking", "oktas")
@@ -148,15 +119,8 @@ grafieken = {
 for key, (kolom, kleur, titel) in grafieken.items():
     if kolom in filtered.columns and not filtered[kolom].dropna().empty:
         fig, ax = plt.subplots()
-        if weergave == "Datumreeks (samenvatting)":
-            data = filtered.copy()
-            data["Dag"] = data["Datum"].dt.date
-            daggemiddeld = data.groupby("Dag")[kolom].mean().reset_index()
-            ax.plot(daggemiddeld["Dag"], daggemiddeld[kolom], color=kleur)
-            ax.set_title(f"{titel} – samenvatting per dag")
-        else:
-            ax.plot(filtered["Datum"], filtered[kolom], color=kleur)
-            ax.set_title(f"{titel} – verloop binnen dag")
+        ax.plot(filtered["Datum"], filtered[kolom], color=kleur)
+        ax.set_title(f"{titel} – verloop binnen dag")
         save_plot(fig, key)
 
 # 📤 Windroos exporteren
@@ -181,10 +145,7 @@ pdf_buffer = io.BytesIO()
 c = canvas.Canvas(pdf_buffer, pagesize=A4)
 c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
-if weergave == "Binnen één dag":
-    c.drawString(2*cm, 27.3*cm, f"Datum: {datum_keuze}")
-else:
-    c.drawString(2*cm, 27.3*cm, f"Periode: {start_date} tot {end_date}")
+c.drawString(2*cm, 27.3*cm, f"Datum: {datum_keuze}")
 
 # 📌 Samenvatting
 y = 26.6 * cm
@@ -215,19 +176,10 @@ c.showPage()
 c.save()
 
 # 📥 Downloadknop voor PDF
-pdf_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatrapport.pdf"
+pdf_name = f"{station}_{datum_keuze}_klimaatrapport.pdf"
 st.download_button(
     label="📄 Download visueel rapport (PDF)",
     data=pdf_buffer.getvalue(),
     file_name=pdf_name,
     mime="application/pdf"
-)
-
-# 📥 Downloadknop voor CSV
-csv_name = f"{station}_{datum_keuze if weergave=='Binnen één dag' else start_date}_klimaatdata.csv"
-st.download_button(
-    label="📥 Download als CSV",
-    data=filtered.to_csv(index=False).encode('utf-8'),
-    file_name=csv_name,
-    mime="text/csv"
 )
