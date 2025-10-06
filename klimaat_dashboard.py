@@ -17,7 +17,8 @@ for kolom in df.columns:
     if kolom in df.columns:
         df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
 
-# 🧼 Normaliseer BronType
+# 🧼 Normaliseer StationID en BronType
+df["StationID"] = df["StationID"].fillna("").astype(str).str.strip()
 df["BronType"] = df["BronType"].astype(str).str.strip().str.upper()
 
 # 🕒 Tijdopbouw en correctie per stationtype
@@ -35,11 +36,11 @@ df["Datum"] = df.apply(
 )
 
 df = df.dropna(subset=["Datum"])
-df["StationID"] = df["StationID"].astype(str)
 
 # 🎛️ Sidebarfilters zonder BronType-keuze
 st.sidebar.title("🔎 Filteropties")
-station = st.sidebar.selectbox("Selecteer een station", sorted(df["StationID"].unique()))
+geldige_stations = df["StationID"].unique()
+station = st.sidebar.selectbox("Selecteer een station", sorted(geldige_stations))
 beschikbare_datums = df[df["StationID"] == station]["Datum"].dt.date.unique()
 datum_keuze = st.sidebar.selectbox("Kies een dag", beschikbare_datums)
 
