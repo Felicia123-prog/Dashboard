@@ -13,34 +13,25 @@ df = pd.read_excel("data/Klimaatdata.xlsx")
 
 # 🧼 Kolommen converteren
 verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
-for kolom in df.columns:
+for kolom in verwachte_kolommen:
     if kolom in df.columns:
         df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
 
-# 🧼 Normaliseer StationID en BronType
-df["StationID"] = df["StationID"].fillna("").astype(str).str.strip()
-df["BronType"] = df["BronType"].astype(str).str.strip().str.upper()
-
-# 🕒 Tijdopbouw en correctie per stationtype
-df["DatumLocal"] = pd.to_datetime(
+# 🕒 Tijdcorrectie van UTC naar Surinaamse tijd (UTC−3)
+df["DatumUTC"] = pd.to_datetime(
     df["Year"].astype(str) + "-" +
     df["Month"].astype(str).str.zfill(2) + "-" +
     df["Day"].astype(str).str.zfill(2) + " " +
     df["Time"].astype(str).str.zfill(2) + ":00",
     errors="coerce"
 )
-
-df["Datum"] = df.apply(
-    lambda row: row["DatumLocal"] - pd.Timedelta(hours=3) if row["BronType"] == "SYNOP" else row["DatumLocal"],
-    axis=1
-)
-
+df["Datum"] = df["DatumUTC"] - pd.Timedelta(hours=3)
 df = df.dropna(subset=["Datum"])
+df["StationID"] = df["StationID"].astype(str)
 
-# 🎛️ Sidebarfilters zonder BronType-keuze
+# 🎛️ Sidebarfilters
 st.sidebar.title("🔎 Filteropties")
-geldige_stations = df["StationID"].unique()
-station = st.sidebar.selectbox("Selecteer een station", sorted(geldige_stations))
+station = st.sidebar.selectbox("Selecteer een station", df["StationID"].unique())
 beschikbare_datums = df[df["StationID"] == station]["Datum"].dt.date.unique()
 datum_keuze = st.sidebar.selectbox("Kies een dag", beschikbare_datums)
 
@@ -56,14 +47,6 @@ st.markdown(f"**Station:** {station}  \n**Datum:** {datum_keuze}")
 if filtered.empty:
     st.warning("📭 Geen gegevens voor deze selectie. Controleer station en datum.")
     st.stop()
-
-# 🧪 Tijdcontrole (debug)
-with st.expander("🧪 Tijdcontrole per rij (debug)", expanded=False):
-    st.dataframe(
-        filtered[["StationID", "BronType", "DatumLocal", "Datum", "Time"]]
-        .sort_values("Datum")
-        .reset_index(drop=True)
-    )
 
 # 📊 Visualisatie
 def plot_element(kolom, kleur, titel, eenheid):
