@@ -3,9 +3,11 @@ import pandas as pd
 import altair as alt
 import matplotlib.pyplot as plt
 import io
+from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
 
 st.set_page_config(page_title="📈 AWS Temperatuur – Suriname", layout="wide")
 
@@ -69,11 +71,13 @@ c.setFont("Helvetica", 12)
 c.drawString(2*cm, 28*cm, f"📄 Temperatuurrapport – {station}")
 c.drawString(2*cm, 27.3*cm, f"Datum: {datum_keuze}")
 
-# 📤 Voeg grafiek toe
+# ✅ Correcte image rendering via PIL
 img_buffer = io.BytesIO()
 fig.savefig(img_buffer, format="png")
 img_buffer.seek(0)
-c.drawImage(img_buffer, 2*cm, 12*cm, width=16*cm, height=12*cm)
+image = Image.open(img_buffer)
+image_reader = ImageReader(image)
+c.drawImage(image_reader, 2*cm, 12*cm, width=16*cm, height=12*cm)
 
 c.showPage()
 c.save()
