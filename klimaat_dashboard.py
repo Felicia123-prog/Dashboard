@@ -14,11 +14,11 @@ df = pd.read_excel("data/Klimaatdata.xlsx")
 # 🧼 Kolommen converteren
 verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
 for kolom in df.columns:
-    if kolom in verwachte_kolommen:
+    if kolom in df.columns:
         df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
 
 # 🧼 Normaliseer BronType
-df["BronType"] = df["BronType"].astype(str).str.strip()
+df["BronType"] = df["BronType"].astype(str).str.strip().str.upper()
 
 # 🕒 Tijdopbouw en correctie per BronType
 df["DatumLocal"] = pd.to_datetime(
@@ -30,7 +30,7 @@ df["DatumLocal"] = pd.to_datetime(
 )
 
 df["Datum"] = df.apply(
-    lambda row: row["DatumLocal"] - pd.Timedelta(hours=3) if row["BronType"] == "Synop" else row["DatumLocal"],
+    lambda row: row["DatumLocal"] - pd.Timedelta(hours=3) if row["BronType"] == "SYNOP" else row["DatumLocal"],
     axis=1
 )
 
