@@ -10,6 +10,7 @@ from reportlab.lib.units import cm
 
 # 📥 Data inladen
 df = pd.read_excel("data/Klimaatdata.xlsx")
+st.write("📋 Unieke BronTypes:", df["BronType"].unique())
 
 # 🧼 Kolommen converteren
 verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
