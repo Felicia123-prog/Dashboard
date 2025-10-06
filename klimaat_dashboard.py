@@ -20,7 +20,7 @@ for kolom in df.columns:
 # 🧼 Normaliseer BronType
 df["BronType"] = df["BronType"].astype(str).str.strip().str.upper()
 
-# 🕒 Tijdopbouw en correctie per BronType
+# 🕒 Tijdopbouw en correctie per stationtype
 df["DatumLocal"] = pd.to_datetime(
     df["Year"].astype(str) + "-" +
     df["Month"].astype(str).str.zfill(2) + "-" +
@@ -37,11 +37,9 @@ df["Datum"] = df.apply(
 df = df.dropna(subset=["Datum"])
 df["StationID"] = df["StationID"].astype(str)
 
-# 🎛️ Sidebarfilters
+# 🎛️ Sidebarfilters zonder BronType-keuze
 st.sidebar.title("🔎 Filteropties")
-station_type = st.sidebar.selectbox("Kies type station", sorted(df["BronType"].unique()))
-stations = df[df["BronType"] == station_type]["StationID"].unique()
-station = st.sidebar.selectbox("Selecteer een station", stations)
+station = st.sidebar.selectbox("Selecteer een station", sorted(df["StationID"].unique()))
 beschikbare_datums = df[df["StationID"] == station]["Datum"].dt.date.unique()
 datum_keuze = st.sidebar.selectbox("Kies een dag", beschikbare_datums)
 
