@@ -18,14 +18,19 @@ for kolom in verwachte_kolommen:
         df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
 
 # 🕒 Tijdcorrectie van UTC naar Surinaamse tijd (UTC−3)
-df["DatumUTC"] = pd.to_datetime(
+# 🕒 Bouw datetime en corrigeer alleen UTC-stations (SYNOP)
+df["DatumLocal"] = pd.to_datetime(
     df["Year"].astype(str) + "-" +
     df["Month"].astype(str).str.zfill(2) + "-" +
     df["Day"].astype(str).str.zfill(2) + " " +
     df["Time"].astype(str).str.zfill(2) + ":00",
     errors="coerce"
 )
-df["Datum"] = df["DatumUTC"] - pd.Timedelta(hours=3)
+# Corrigeer alleen SYNOP-stations (die in UTC staan)
+df["Datum"] = df.apply(
+    lambda row: row["DatumLocal"] - pd.Timedelta(hours=3) if "Synop" in row["StationID"] else row["DatumLocal"],
+    axis=1
+)
 df = df.dropna(subset=["Datum"])
 df["StationID"] = df["StationID"].astype(str)
 
