@@ -17,6 +17,9 @@ for kolom in df.columns:
     if kolom in verwachte_kolommen:
         df[kolom] = pd.to_numeric(df[kolom], errors="coerce")
 
+# 🧼 Normaliseer BronType
+df["BronType"] = df["BronType"].astype(str).str.strip()
+
 # 🕒 Tijdopbouw en correctie per BronType
 df["DatumLocal"] = pd.to_datetime(
     df["Year"].astype(str) + "-" +
@@ -36,7 +39,7 @@ df["StationID"] = df["StationID"].astype(str)
 
 # 🎛️ Sidebarfilters
 st.sidebar.title("🔎 Filteropties")
-station_type = st.sidebar.selectbox("Kies type station", df["BronType"].unique())
+station_type = st.sidebar.selectbox("Kies type station", sorted(df["BronType"].unique()))
 stations = df[df["BronType"] == station_type]["StationID"].unique()
 station = st.sidebar.selectbox("Selecteer een station", stations)
 beschikbare_datums = df[df["StationID"] == station]["Datum"].dt.date.unique()
@@ -167,8 +170,4 @@ c.save()
 # 📥 Downloadknop voor PDF
 pdf_name = f"{station}_{datum_keuze}_klimaatrapport.pdf"
 st.download_button(
-    label="📄 Download visueel rapport (PDF)",
-    data=pdf_buffer.getvalue(),
-    file_name=pdf_name,
-    mime="application/pdf"
-)
+    label="📄 Download vis
