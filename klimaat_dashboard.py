@@ -170,4 +170,8 @@ c.save()
 # 📥 Downloadknop voor PDF
 pdf_name = f"{station}_{datum_keuze}_klimaatrapport.pdf"
 st.download_button(
-    label="📄 Download vis
+    label="📄 Download visueel rapport (PDF)",
+    data=pdf_buffer.getvalue(),
+    file_name=pdf_name,
+    mime="application/pdf"
+)
