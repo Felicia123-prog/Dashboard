@@ -10,7 +10,6 @@ from reportlab.lib.units import cm
 
 # 📥 Data inladen
 df = pd.read_excel("data/Klimaatdata.xlsx")
-st.write("📋 Unieke BronTypes:", df["BronType"].unique())
 
 # 🧼 Kolommen converteren
 verwachte_kolommen = ["Temperature", "RH", "Total Cloud Coverage", "Wind direction", "Wind Velocity", "Pressure"]
@@ -55,6 +54,14 @@ st.markdown(f"**Station:** {station}  \n**Datum:** {datum_keuze}")
 if filtered.empty:
     st.warning("📭 Geen gegevens voor deze selectie. Controleer station en datum.")
     st.stop()
+
+# 🧪 Tijdcontrole (debug)
+with st.expander("🧪 Tijdcontrole per rij (debug)", expanded=False):
+    st.dataframe(
+        filtered[["StationID", "BronType", "DatumLocal", "Datum", "Time"]]
+        .sort_values("Datum")
+        .reset_index(drop=True)
+    )
 
 # 📊 Visualisatie
 def plot_element(kolom, kleur, titel, eenheid):
