@@ -102,55 +102,46 @@ st.download_button(
     mime="image/jpeg"
 )
 
-# 🌧️ Neerslagsectie
+# 🌧️ Dagelijkse Neerslag
 st.header("🌧️ Dagelijkse Neerslag")
 
-# 🧠 Status categoriseren
-dagelijks["Status"] = dagelijks["Rainfall"].apply(
-    lambda x: "Geen data" if pd.isna(x) else ("Droge dag" if x < 1 else "Natte dag")
-)
+# 🧠 Status categoriseren en NA uitsluiten
+dagelijks_rain = dagelijks.copy()
+dagelijks_rain = dagelijks_rain.dropna(subset=["Rainfall"])
+dagelijks_rain["Rainfall"] = dagelijks_rain["Rainfall"].apply(lambda x: 0.0 if x < 1 else x)
+dagelijks_rain["Status"] = dagelijks_rain["Rainfall"].apply(lambda x: "Droge dag" if x == 0.0 else "Natte dag")
+
 kleur_map = {
-    "Geen data": "lightgray",
     "Droge dag": "green",
     "Natte dag": "dodgerblue"
 }
 
 # 📊 Staafdiagram
-bars_rain = alt.Chart(dagelijks).mark_bar().encode(
+rain_chart = alt.Chart(dagelijks_rain).mark_bar().encode(
     x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y("Rainfall:Q", title="Neerslag (mm)"),
     color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
                     legend=alt.Legend(title="Dagstatus")),
     tooltip=["Day", "Rainfall", "Status"]
-)
+).properties(title="Dagelijkse neerslag (mm)")
 
-# 🔘 Puntjes onder de x-as
-punten = alt.Chart(dagelijks).mark_point(size=60).encode(
-    x=alt.X("Day:O"),
-    y=alt.value(-1),
-    color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
-                    legend=None),
-    tooltip=["Day", "Status"]
-)
+st.altair_chart(rain_chart, use_container_width=True)
 
-st.altair_chart(bars_rain + punten, use_container_width=True)
-
-# 🎨 Legenda neerslag
+# 🎨 Legenda
 st.markdown("""
 <div style="margin-top: 10px;">
 <b>Legenda:</b><br>
 🔵 Natte dag (≥ 1 mm)<br>
-🟩 Droge dag (< 1 mm)<br>
-⬜️ Geen data beschikbaar (NA)
+🟩 Droge dag (< 1 mm → 0.0 mm)<br>
+⬜️ Geen data beschikbaar (niet getoond)
 </div>
 """, unsafe_allow_html=True)
 
 # 📥 Download neerslag JPEG
 fig2, ax2 = plt.subplots()
-for i, row in dagelijks.iterrows():
-    kleur = "lightgray" if pd.isna(row["Rainfall"]) else ("green" if row["Rainfall"] < 1 else "dodgerblue")
-    waarde = 0 if pd.isna(row["Rainfall"]) else row["Rainfall"]
-    ax2.bar(row["Day"], waarde, color=kleur)
+for i, row in dagelijks_rain.iterrows():
+    kleur = "green" if row["Rainfall"] == 0.0 else "dodgerblue"
+    ax2.bar(row["Day"], row["Rainfall"], color=kleur)
 ax2.set_title("Neerslag")
 ax2.set_xlabel("Dag van de maand")
 ax2.set_ylabel("Neerslag (mm)")
