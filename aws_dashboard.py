@@ -107,29 +107,40 @@ st.header("🌧️ Dagelijkse Neerslag")
 
 # 🧠 Status categoriseren
 dagelijks["Status"] = dagelijks["Rainfall"].apply(
-    lambda x: "Geen data" if pd.isna(x) else ("Droge dag" if x == 0 else "Neerslag")
+    lambda x: "Geen data" if pd.isna(x) else ("Droge dag" if x < 1 else "Natte dag")
 )
 kleur_map = {
-    "Geen data": "white",
+    "Geen data": "lightgray",
     "Droge dag": "green",
-    "Neerslag": "dodgerblue"
+    "Natte dag": "dodgerblue"
 }
 
-rain_chart = alt.Chart(dagelijks).mark_bar().encode(
+# 📊 Staafdiagram
+bars_rain = alt.Chart(dagelijks).mark_bar().encode(
     x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y("Rainfall:Q", title="Neerslag (mm)"),
     color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
                     legend=alt.Legend(title="Dagstatus")),
     tooltip=["Day", "Rainfall", "Status"]
-).properties(title="Dagelijkse neerslag (mm)")
-st.altair_chart(rain_chart, use_container_width=True)
+)
+
+# 🔘 Puntjes onder de x-as
+punten = alt.Chart(dagelijks).mark_point(size=60).encode(
+    x=alt.X("Day:O"),
+    y=alt.value(-1),
+    color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
+                    legend=None),
+    tooltip=["Day", "Status"]
+)
+
+st.altair_chart(bars_rain + punten, use_container_width=True)
 
 # 🎨 Legenda neerslag
 st.markdown("""
 <div style="margin-top: 10px;">
 <b>Legenda:</b><br>
-🟩 Droge dag (0 mm)<br>
-🔵 Neerslag gemeten (> 0 mm)<br>
+🔵 Natte dag (≥ 1 mm)<br>
+🟩 Droge dag (< 1 mm)<br>
 ⬜️ Geen data beschikbaar (NA)
 </div>
 """, unsafe_allow_html=True)
@@ -137,7 +148,7 @@ st.markdown("""
 # 📥 Download neerslag JPEG
 fig2, ax2 = plt.subplots()
 for i, row in dagelijks.iterrows():
-    kleur = "white" if pd.isna(row["Rainfall"]) else ("green" if row["Rainfall"] == 0 else "dodgerblue")
+    kleur = "lightgray" if pd.isna(row["Rainfall"]) else ("green" if row["Rainfall"] < 1 else "dodgerblue")
     waarde = 0 if pd.isna(row["Rainfall"]) else row["Rainfall"]
     ax2.bar(row["Day"], waarde, color=kleur)
 ax2.set_title("Neerslag")
