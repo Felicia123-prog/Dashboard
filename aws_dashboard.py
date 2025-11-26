@@ -69,23 +69,32 @@ daglijst["Datum"] = pd.to_datetime(daglijst[["Year", "Month", "Day"]], errors="c
 # 🔗 Merge met volledige daglijst
 volledig = pd.merge(daglijst, dagelijks, on=["Year", "Month", "Day", "Datum"], how="left")
 
-# 📈 Visualisatie
+# 🧪 Check of temperatuurkolom bestaat en gevuld is
+if temp_type not in volledig.columns:
+    st.error(f"❌ Kolom '{temp_type}' bestaat niet in de data.")
+    st.stop()
+
+if volledig[temp_type].isna().all():
+    st.warning("📭 Geen temperatuurwaarden beschikbaar voor deze maand.")
+    st.stop()
+
+# 📈 Visualisatie met dagnummers
 st.title("📆 Dagelijks Temperatuurverloop – AWS")
 st.markdown(f"**Station:** {station}  \n**Periode:** {gekozen_jaar}-{str(gekozen_maand).zfill(2)}  \n**Type:** {temp_type}")
 
 chart = alt.Chart(volledig).mark_line(color="orange").encode(
-    x="Datum:T",
+    x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y(f"{temp_type}:Q", title="Temperatuur (°C)"),
-    tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{temp_type}:Q", title="Temperatuur (°C)")]
+    tooltip=[alt.Tooltip("Day:O", title="Dag"), alt.Tooltip(f"{temp_type}:Q", title="Temperatuur (°C)")]
 ).properties(title=f"Dagelijks verloop – {temp_type}")
 
 st.altair_chart(chart, use_container_width=True)
 
 # 📤 Matplotlib-grafiek voor PDF
 fig, ax = plt.subplots()
-ax.plot(volledig["Datum"], volledig[temp_type], color="orange", marker="o")
+ax.plot(volledig["Day"], volledig[temp_type], color="orange", marker="o")
 ax.set_title(f"Dagelijks verloop – {temp_type}")
-ax.set_xlabel("Dag")
+ax.set_xlabel("Dag van de maand")
 ax.set_ylabel("Temperatuur (°C)")
 fig.tight_layout()
 
@@ -110,8 +119,8 @@ c.drawString(2*cm, 10*cm, "📊 Dagwaarden:")
 for i, row in volledig.iterrows():
     y_pos = 9.5*cm - i*0.4*cm
     if y_pos < 2*cm:
-        break  # voorkom overflow
-    dag_str = row["Datum"].strftime("%Y-%m-%d")
+        break
+    dag_str = f"{gekozen_jaar}-{str(gekozen_maand).zfill(2)}-{int(row['Day']):02d}"
     waarde = f"{row[temp_type]:.2f} °C" if pd.notna(row[temp_type]) else "geen data"
     c.drawString(2*cm, y_pos, f"{dag_str}: {waarde}")
 
