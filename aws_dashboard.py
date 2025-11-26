@@ -55,7 +55,7 @@ dagelijks = (
 
 # 📈 Combinatiegrafiek
 st.title("📊 Combinatiegrafiek Temperatuur – AWS")
-st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(int(gekozen_maand)).zfill(2)}")
+st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(gekozen_maand).zfill(2)}")
 
 bars = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
     x=alt.X("Day:O", title="Dag van de maand"),
@@ -105,14 +105,4 @@ st.download_button(
     data=jpeg_buffer.getvalue(),
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_combinatiegrafiek.jpeg",
     mime="image/jpeg"
-)
-
-# 📋 CSV-download van dagwaarden
-csv_buffer = io.StringIO()
-dagelijks.to_csv(csv_buffer, index=False)
-st.download_button(
-    label="📥 Download dagwaarden (CSV)",
-    data=csv_buffer.getvalue(),
-    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_dagwaarden.csv",
-    mime="text/csv"
 )
