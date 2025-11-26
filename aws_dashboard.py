@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-st.set_page_config(page_title="📦 Boxplot Temperatuur – AWS Suriname", layout="wide")
+st.set_page_config(page_title="📊 Combinatiegrafiek Temperatuur – AWS Suriname", layout="wide")
 
 # 📥 Data inladen
 df = pd.read_excel("data/awsdata.xlsx")
@@ -41,22 +41,36 @@ if maand_df.empty:
     st.warning("📭 Geen gegevens voor deze selectie.")
     st.stop()
 
-# 📊 Data herschikken voor boxplot
-boxdata = maand_df.melt(
-    id_vars=["Day"],
-    value_vars=["AVG_Temperature", "Max_Temperature", "Min_Temperature"],
-    var_name="Type",
-    value_name="Temperatuur"
+# 📊 Dagelijkse aggregatie
+dagelijks = (
+    maand_df.groupby(["Year", "Month", "Day"], as_index=False)
+    .agg({
+        "AVG_Temperature": "mean",
+        "Max_Temperature": "mean",
+        "Min_Temperature": "mean"
+    })
 )
 
-# 📈 Boxplot
-st.title("📦 Boxplot Temperatuur – AWS")
+# 📈 Combinatiegrafiek
+st.title("📊 Combinatiegrafiek Temperatuur – AWS")
 st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(int(gekozen_maand)).zfill(2)}")
 
-chart = alt.Chart(boxdata).mark_boxplot(extent="min-max").encode(
-    x=alt.X("Type:N", title="Temperatuurtype"),
-    y=alt.Y("Temperatuur:Q", title="Temperatuur (°C)"),
-    color="Type:N"
-).properties(title="Boxplot van temperatuurtypes")
+bars = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
+    x=alt.X("Day:O", title="Dag van de maand"),
+    y=alt.Y("AVG_Temperature:Q", title="Temperatuur (°C)"),
+    tooltip=[alt.Tooltip("Day:O", title="Dag"), alt.Tooltip("AVG_Temperature:Q", title="Gemiddelde (°C)")]
+)
 
-st.altair_chart(chart, use_container_width=True)
+line_max = alt.Chart(dagelijks).mark_line(color="red").encode(
+    x="Day:O",
+    y="Max_Temperature:Q",
+    tooltip=[alt.Tooltip("Max_Temperature:Q", title="Maximum (°C)")]
+)
+
+line_min = alt.Chart(dagelijks).mark_line(color="green").encode(
+    x="Day:O",
+    y="Min_Temperature:Q",
+    tooltip=[alt.Tooltip("Min_Temperature:Q", title="Minimum (°C)")]
+)
+
+st.altair_chart(bars + line_max + line_min, use_container_width=True)
