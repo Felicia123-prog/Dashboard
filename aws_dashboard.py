@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+import matplotlib.pyplot as plt
+import io
+from PIL import Image
 
 st.set_page_config(page_title="📊 Combinatiegrafiek Temperatuur – AWS Suriname", layout="wide")
 
@@ -51,26 +54,60 @@ dagelijks = (
     })
 )
 
-# 📈 Combinatiegrafiek
+# 📈 Combinatiegrafiek met legenda
 st.title("📊 Combinatiegrafiek Temperatuur – AWS")
 st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(int(gekozen_maand)).zfill(2)}")
 
-bars = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
+bars = alt.Chart(dagelijks).mark_bar().encode(
     x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y("AVG_Temperature:Q", title="Temperatuur (°C)"),
-    tooltip=[alt.Tooltip("Day:O", title="Dag"), alt.Tooltip("AVG_Temperature:Q", title="Gemiddelde (°C)")]
+    color=alt.value("skyblue"),
+    tooltip=["Day", "AVG_Temperature"]
 )
 
 line_max = alt.Chart(dagelijks).mark_line(color="red").encode(
     x="Day:O",
     y="Max_Temperature:Q",
-    tooltip=[alt.Tooltip("Max_Temperature:Q", title="Maximum (°C)")]
+    tooltip=["Day", "Max_Temperature"]
 )
 
 line_min = alt.Chart(dagelijks).mark_line(color="green").encode(
     x="Day:O",
     y="Min_Temperature:Q",
-    tooltip=[alt.Tooltip("Min_Temperature:Q", title="Minimum (°C)")]
+    tooltip=["Day", "Min_Temperature"]
 )
 
+# Legenda handmatig toevoegen
+legend = alt.Chart(pd.DataFrame({
+    'Type': ['Gemiddelde (blauw)', 'Maximum (rood)', 'Minimum (groen)'],
+    'x': [0, 0, 0],
+    'y': [0, 0, 0]
+})).mark_point().encode(
+    x=alt.X('x', axis=None),
+    y=alt.Y('y', axis=None),
+    color=alt.Color('Type', scale=alt.Scale(domain=['Gemiddelde (blauw)', 'Maximum (rood)', 'Minimum (groen)'],
+                                            range=['skyblue', 'red', 'green']))
+).properties(title="Legenda")
+
 st.altair_chart(bars + line_max + line_min, use_container_width=True)
+
+# 📤 Matplotlib-versie voor download
+fig, ax = plt.subplots()
+ax.bar(dagelijks["Day"], dagelijks["AVG_Temperature"], color="skyblue", label="Gemiddelde")
+ax.plot(dagelijks["Day"], dagelijks["Max_Temperature"], color="red", label="Maximum")
+ax.plot(dagelijks["Day"], dagelijks["Min_Temperature"], color="green", label="Minimum")
+ax.set_title("Combinatiegrafiek Temperatuur")
+ax.set_xlabel("Dag van de maand")
+ax.set_ylabel("Temperatuur (°C)")
+ax.legend()
+fig.tight_layout()
+
+# 📥 Downloadknop
+img_buffer = io.BytesIO()
+fig.savefig(img_buffer, format="png")
+st.download_button(
+    label="📥 Download grafiek (PNG)",
+    data=img_buffer.getvalue(),
+    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_combinatiegrafiek.png",
+    mime="image/png"
+)
