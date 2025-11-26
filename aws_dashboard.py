@@ -54,7 +54,7 @@ dagelijks = (
     })
 )
 
-# 📈 Combinatiegrafiek met legenda
+# 📈 Combinatiegrafiek
 st.title("📊 Combinatiegrafiek Temperatuur – AWS")
 st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(int(gekozen_maand)).zfill(2)}")
 
@@ -77,19 +77,17 @@ line_min = alt.Chart(dagelijks).mark_line(color="green").encode(
     tooltip=["Day", "Min_Temperature"]
 )
 
-# Legenda handmatig toevoegen
-legend = alt.Chart(pd.DataFrame({
-    'Type': ['Gemiddelde (blauw)', 'Maximum (rood)', 'Minimum (groen)'],
-    'x': [0, 0, 0],
-    'y': [0, 0, 0]
-})).mark_point().encode(
-    x=alt.X('x', axis=None),
-    y=alt.Y('y', axis=None),
-    color=alt.Color('Type', scale=alt.Scale(domain=['Gemiddelde (blauw)', 'Maximum (rood)', 'Minimum (groen)'],
-                                            range=['skyblue', 'red', 'green']))
-).properties(title="Legenda")
-
 st.altair_chart(bars + line_max + line_min, use_container_width=True)
+
+# 🎨 Legenda onder de grafiek
+st.markdown("""
+<div style="margin-top: 10px;">
+<b>Legenda:</b><br>
+🟦 Gemiddelde temperatuur (AVG_Temperature)<br>
+🔴 Maximum temperatuur (Max_Temperature)<br>
+🟢 Minimum temperatuur (Min_Temperature)
+</div>
+""", unsafe_allow_html=True)
 
 # 📤 Matplotlib-versie voor download
 fig, ax = plt.subplots()
