@@ -9,7 +9,7 @@ st.set_page_config(page_title="AWS data van Suriname", layout="wide")
 # 📥 Data inladen
 df = pd.read_excel("data/awsdata.xlsx")
 
-# ✅ Kolomcheck (inclusief Rainfall en ruimte voor uitbreiding)
+# ✅ Kolomcheck
 required_columns = ["StationID", "Year", "Month", "Day",
                     "AVG_Temperature", "Max_Temperature", "Min_Temperature", "Rainfall"]
 missing = [col for col in required_columns if col not in df.columns]
@@ -43,7 +43,7 @@ if maand_df.empty:
     st.warning("📭 Geen gegevens voor deze selectie.")
     st.stop()
 
-# 📊 Dagelijkse aggregatie (ruimte voor uitbreiding met nieuwe elementen)
+# 📊 Dagelijkse aggregatie
 dagelijks = (
     maand_df.groupby(["Year", "Month", "Day"], as_index=False)
     .agg({
@@ -58,7 +58,7 @@ dagelijks = (
 st.title("🌍 AWS data van Suriname")
 st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(gekozen_maand).zfill(2)}")
 
-# 📈 Temperatuur grafiek
+# 📈 Temperatuursectie
 st.header("🌡️ Temperatuur (Gemiddelde, Maximum, Minimum)")
 bars = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
     x=alt.X("Day:O", title="Dag van de maand"),
@@ -73,7 +73,7 @@ line_min = alt.Chart(dagelijks).mark_line(color="green").encode(
 )
 st.altair_chart(bars + line_max + line_min, use_container_width=True)
 
-# 🎨 Legenda
+# 🎨 Legenda temperatuur
 st.markdown("""
 <div style="margin-top: 10px;">
 <b>Legenda:</b><br>
@@ -83,7 +83,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 📤 Downloadknop Temperatuur (JPEG)
+# 📥 Download temperatuur JPEG
 fig, ax = plt.subplots()
 ax.bar(dagelijks["Day"], dagelijks["AVG_Temperature"], color="skyblue", label="Gemiddelde")
 ax.plot(dagelijks["Day"], dagelijks["Max_Temperature"], color="red", label="Maximum")
@@ -102,22 +102,47 @@ st.download_button(
     mime="image/jpeg"
 )
 
-# 🌧️ Neerslag grafiek
+# 🌧️ Neerslagsectie
 st.header("🌧️ Dagelijkse Neerslag")
-rain_chart = alt.Chart(dagelijks).mark_bar(color="dodgerblue").encode(
+
+# 🧠 Status categoriseren
+dagelijks["Status"] = dagelijks["Rainfall"].apply(
+    lambda x: "Geen data" if pd.isna(x) else ("Droge dag" if x == 0 else "Neerslag")
+)
+kleur_map = {
+    "Geen data": "white",
+    "Droge dag": "green",
+    "Neerslag": "dodgerblue"
+}
+
+rain_chart = alt.Chart(dagelijks).mark_bar().encode(
     x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y("Rainfall:Q", title="Neerslag (mm)"),
-    tooltip=["Day", "Rainfall"]
+    color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
+                    legend=alt.Legend(title="Dagstatus")),
+    tooltip=["Day", "Rainfall", "Status"]
 ).properties(title="Dagelijkse neerslag (mm)")
 st.altair_chart(rain_chart, use_container_width=True)
 
-# 📤 Downloadknop Neerslag (JPEG)
+# 🎨 Legenda neerslag
+st.markdown("""
+<div style="margin-top: 10px;">
+<b>Legenda:</b><br>
+🟩 Droge dag (0 mm)<br>
+🔵 Neerslag gemeten (> 0 mm)<br>
+⬜️ Geen data beschikbaar (NA)
+</div>
+""", unsafe_allow_html=True)
+
+# 📥 Download neerslag JPEG
 fig2, ax2 = plt.subplots()
-ax2.bar(dagelijks["Day"], dagelijks["Rainfall"], color="dodgerblue", label="Neerslag")
+for i, row in dagelijks.iterrows():
+    kleur = "white" if pd.isna(row["Rainfall"]) else ("green" if row["Rainfall"] == 0 else "dodgerblue")
+    waarde = 0 if pd.isna(row["Rainfall"]) else row["Rainfall"]
+    ax2.bar(row["Day"], waarde, color=kleur)
 ax2.set_title("Neerslag")
 ax2.set_xlabel("Dag van de maand")
 ax2.set_ylabel("Neerslag (mm)")
-ax2.legend()
 fig2.tight_layout()
 jpeg_buffer2 = io.BytesIO()
 fig2.savefig(jpeg_buffer2, format="jpeg")
