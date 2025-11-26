@@ -24,6 +24,8 @@ if missing:
 
 # 🧼 Opschonen
 df["StationID"] = df["StationID"].fillna("").astype(str).str.strip()
+df["Day"] = pd.to_numeric(df["Day"], errors="coerce")
+df = df.dropna(subset=["Day"])
 df["Datum"] = pd.to_datetime(df[["Year", "Month", "Day"]], errors="coerce")
 
 # 🎛️ Sidebarfilters
@@ -46,7 +48,7 @@ if maand_df.empty:
     st.warning("📭 Geen gegevens beschikbaar voor deze maand.")
     st.stop()
 
-# 📊 Dagelijks verloop binnen maand
+# 📊 Dagelijks gemiddelde berekenen
 dagelijks = (
     maand_df.groupby(["Year", "Month", "Day"])
     .agg({
@@ -56,16 +58,24 @@ dagelijks = (
     })
     .reset_index()
 )
+dagelijks["Datum"] = pd.to_datetime(dagelijks[["Year", "Month", "Day"]], errors="coerce")
 
-dagelijks["Datum"] = pd.to_datetime(dagelijks[["Year", "Month", "Day"]])
+# 📅 Volledige daglijst (1–31)
+daglijst = pd.DataFrame({"Day": range(1, 32)})
+daglijst["Year"] = gekozen_jaar
+daglijst["Month"] = gekozen_maand
+daglijst["Datum"] = pd.to_datetime(daglijst[["Year", "Month", "Day"]], errors="coerce")
+
+# 🔗 Merge met volledige daglijst
+volledig = pd.merge(daglijst, dagelijks, on=["Year", "Month", "Day", "Datum"], how="left")
 
 # 📈 Visualisatie
 st.title("📆 Dagelijks Temperatuurverloop – AWS")
 st.markdown(f"**Station:** {station}  \n**Periode:** {gekozen_jaar}-{str(gekozen_maand).zfill(2)}  \n**Type:** {temp_type}")
 
-chart = alt.Chart(dagelijks).mark_line(color="orange").encode(
+chart = alt.Chart(volledig).mark_line(color="orange").encode(
     x="Datum:T",
-    y=f"{temp_type}:Q",
+    y=alt.Y(f"{temp_type}:Q", title="Temperatuur (°C)"),
     tooltip=[alt.Tooltip("Datum:T"), alt.Tooltip(f"{temp_type}:Q", title="Temperatuur (°C)")]
 ).properties(title=f"Dagelijks verloop – {temp_type}")
 
@@ -73,7 +83,7 @@ st.altair_chart(chart, use_container_width=True)
 
 # 📤 Matplotlib-grafiek voor PDF
 fig, ax = plt.subplots()
-ax.plot(dagelijks["Datum"], dagelijks[temp_type], color="orange", marker="o")
+ax.plot(volledig["Datum"], volledig[temp_type], color="orange", marker="o")
 ax.set_title(f"Dagelijks verloop – {temp_type}")
 ax.set_xlabel("Dag")
 ax.set_ylabel("Temperatuur (°C)")
@@ -97,12 +107,12 @@ c.drawImage(image_reader, 2*cm, 12*cm, width=16*cm, height=12*cm)
 
 # 📊 Samenvattingstabel
 c.drawString(2*cm, 10*cm, "📊 Dagwaarden:")
-for i, row in dagelijks.iterrows():
+for i, row in volledig.iterrows():
     y_pos = 9.5*cm - i*0.4*cm
     if y_pos < 2*cm:
         break  # voorkom overflow
     dag_str = row["Datum"].strftime("%Y-%m-%d")
-    waarde = f"{row[temp_type]:.2f} °C"
+    waarde = f"{row[temp_type]:.2f} °C" if pd.notna(row[temp_type]) else "geen data"
     c.drawString(2*cm, y_pos, f"{dag_str}: {waarde}")
 
 c.showPage()
