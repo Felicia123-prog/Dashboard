@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 import matplotlib.pyplot as plt
 import io
+import calendar
 
 st.set_page_config(page_title="AWS data van Suriname", layout="wide")
 
@@ -54,23 +55,37 @@ dagelijks = (
     })
 )
 
+# 🔢 Volledige dagreeks garanderen (1..aantal dagen van maand)
+aantal_dagen = calendar.monthrange(int(gekozen_jaar), int(gekozen_maand))[1]
+volledige_dagen = pd.DataFrame({"Day": list(range(1, aantal_dagen + 1))})
+# Merge zodat alle dagen op de x-as komen
+dagelijks_full = volledige_dagen.merge(dagelijks, on="Day", how="left")
+dagelijks_full["Year"] = gekozen_jaar
+dagelijks_full["Month"] = gekozen_maand
+
 # 🌍 Algemene titel
 st.title("🌍 AWS data van Suriname")
-st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(gekozen_maand).zfill(2)}")
+st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(int(gekozen_maand)).zfill(2)}")
 
-# 📈 Temperatuursectie
+# =========================
+# 🌡️ Temperatuursectie
+# =========================
 st.header("🌡️ Temperatuur (Gemiddelde, Maximum, Minimum)")
-bars = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
+
+bars = alt.Chart(dagelijks_full).mark_bar(color="skyblue").encode(
     x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y("AVG_Temperature:Q", title="Temperatuur (°C)"),
     tooltip=["Day", "AVG_Temperature"]
 )
-line_max = alt.Chart(dagelijks).mark_line(color="red").encode(
+
+line_max = alt.Chart(dagelijks_full).mark_line(color="red").encode(
     x="Day:O", y="Max_Temperature:Q", tooltip=["Day", "Max_Temperature"]
 )
-line_min = alt.Chart(dagelijks).mark_line(color="green").encode(
+
+line_min = alt.Chart(dagelijks_full).mark_line(color="green").encode(
     x="Day:O", y="Min_Temperature:Q", tooltip=["Day", "Min_Temperature"]
 )
+
 st.altair_chart(bars + line_max + line_min, use_container_width=True)
 
 # 🎨 Legenda temperatuur
@@ -85,9 +100,9 @@ st.markdown("""
 
 # 📥 Download temperatuur JPEG
 fig, ax = plt.subplots()
-ax.bar(dagelijks["Day"], dagelijks["AVG_Temperature"], color="skyblue", label="Gemiddelde")
-ax.plot(dagelijks["Day"], dagelijks["Max_Temperature"], color="red", label="Maximum")
-ax.plot(dagelijks["Day"], dagelijks["Min_Temperature"], color="green", label="Minimum")
+ax.bar(dagelijks_full["Day"], dagelijks_full["AVG_Temperature"], color="skyblue", label="Gemiddelde")
+ax.plot(dagelijks_full["Day"], dagelijks_full["Max_Temperature"], color="red", label="Maximum")
+ax.plot(dagelijks_full["Day"], dagelijks_full["Min_Temperature"], color="green", label="Minimum")
 ax.set_title("Temperatuur")
 ax.set_xlabel("Dag van de maand")
 ax.set_ylabel("Temperatuur (°C)")
@@ -102,50 +117,97 @@ st.download_button(
     mime="image/jpeg"
 )
 
-# 🌧️ Dagelijkse Neerslag
+# =========================
+# 🌧️ Neerslagsectie
+# =========================
 st.header("🌧️ Dagelijkse Neerslag")
 
-# 🧠 Status categoriseren en NA uitsluiten
-dagelijks_rain = dagelijks.copy()
-dagelijks_rain = dagelijks_rain.dropna(subset=["Rainfall"])
-dagelijks_rain["Rainfall"] = dagelijks_rain["Rainfall"].apply(lambda x: 0.0 if x < 1 else x)
-dagelijks_rain["Status"] = dagelijks_rain["Rainfall"].apply(lambda x: "Droge dag" if x == 0.0 else "Natte dag")
+# 🧠 Voor grafiek: status en zichtbaar 0.0 labels
+rain_df = dagelijks_full.copy()
 
+# Status bepalen: NA / Droog / Nat
+def _status(val):
+    if pd.isna(val):
+        return "Geen data"
+    return "Droge dag" if val < 1 else "Natte dag"
+
+rain_df["Status"] = rain_df["Rainfall"].apply(_status)
+
+# Voor weergave: droog = 0.0 (letterlijk tonen), nat = waarde
+rain_df["Rainfall_display"] = rain_df["Rainfall"].apply(lambda x: 0.0 if (not pd.isna(x) and x < 1) else x)
+
+# Kleuren
 kleur_map = {
+    "Geen data": "lightgray",
     "Droge dag": "green",
     "Natte dag": "dodgerblue"
 }
 
-# 📊 Staafdiagram
-rain_chart = alt.Chart(dagelijks_rain).mark_bar().encode(
+# 📊 Staven (NA-dagen worden niet getekend als staaf)
+bars_rain = alt.Chart(rain_df[rain_df["Status"] != "Geen data"]).mark_bar().encode(
     x=alt.X("Day:O", title="Dag van de maand"),
-    y=alt.Y("Rainfall:Q", title="Neerslag (mm)"),
+    y=alt.Y("Rainfall_display:Q", title="Neerslag (mm)"),
     color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
                     legend=alt.Legend(title="Dagstatus")),
-    tooltip=["Day", "Rainfall", "Status"]
-).properties(title="Dagelijkse neerslag (mm)")
+    tooltip=["Day", alt.Tooltip("Rainfall_display:Q", title="Neerslag (mm)"), "Status"]
+)
 
-st.altair_chart(rain_chart, use_container_width=True)
+# 🔘 Statuspunt onder de x-as voor NA-dagen
+punten_na = alt.Chart(rain_df[rain_df["Status"] == "Geen data"]).mark_point(size=60, shape="circle", filled=True).encode(
+    x=alt.X("Day:O"),
+    y=alt.value(-1),  # onder de as
+    color=alt.Color("Status:N", scale=alt.Scale(domain=list(kleur_map.keys()), range=list(kleur_map.values())),
+                    legend=None),
+    tooltip=["Day", "Status"]
+)
 
-# 🎨 Legenda
+# 🏷️ Tekstlabels "0.0" op droge dagen (zichtbaar op de basislijn)
+labels_zero = alt.Chart(rain_df[rain_df["Status"] == "Droge dag"]).mark_text(
+    dy=-4,  # net boven de as
+    fontSize=11,
+    color="green"
+).encode(
+    x=alt.X("Day:O"),
+    y=alt.value(0),
+    text=alt.value("0.0")
+)
+
+st.altair_chart(bars_rain + punten_na + labels_zero, use_container_width=True)
+
+# 🎨 Legenda neerslag
 st.markdown("""
 <div style="margin-top: 10px;">
 <b>Legenda:</b><br>
 🔵 Natte dag (≥ 1 mm)<br>
-🟩 Droge dag (< 1 mm → 0.0 mm)<br>
-⬜️ Geen data beschikbaar (niet getoond)
+🟩 Droge dag (< 1 mm → 0.0 mm zichtbaar)<br>
+⚪️ Geen data beschikbaar (NA) – punt onder de as
 </div>
 """, unsafe_allow_html=True)
 
-# 📥 Download neerslag JPEG
+# 📥 Download neerslag JPEG (met 0.0 labels)
 fig2, ax2 = plt.subplots()
-for i, row in dagelijks_rain.iterrows():
-    kleur = "green" if row["Rainfall"] == 0.0 else "dodgerblue"
-    ax2.bar(row["Day"], row["Rainfall"], color=kleur)
+
+for _, row in rain_df.iterrows():
+    day = int(row["Day"])
+    status = row["Status"]
+    val = row["Rainfall"]
+    if status == "Geen data":
+        # klein grijs punt onder de as (visueel indicatief)
+        ax2.plot(day, -0.2, marker="o", color="lightgray")
+        continue
+    # Droge dag: 0.0 en groen
+    if val < 1:
+        ax2.bar(day, 0.0, color="green")
+        ax2.text(day, 0.1, "0.0", color="green", ha="center", va="bottom", fontsize=9)
+    else:
+        ax2.bar(day, val, color="dodgerblue")
+
 ax2.set_title("Neerslag")
 ax2.set_xlabel("Dag van de maand")
 ax2.set_ylabel("Neerslag (mm)")
+ax2.set_ylim(bottom=-0.5)  # ruimte voor NA-punten onder de as
 fig2.tight_layout()
+
 jpeg_buffer2 = io.BytesIO()
 fig2.savefig(jpeg_buffer2, format="jpeg")
 st.download_button(
