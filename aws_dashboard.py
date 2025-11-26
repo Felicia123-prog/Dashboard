@@ -3,7 +3,6 @@ import pandas as pd
 import altair as alt
 import matplotlib.pyplot as plt
 import io
-from PIL import Image
 
 st.set_page_config(page_title="📊 Combinatiegrafiek Temperatuur – AWS Suriname", layout="wide")
 
@@ -58,10 +57,9 @@ dagelijks = (
 st.title("📊 Combinatiegrafiek Temperatuur – AWS")
 st.markdown(f"**Station:** {station}  \n**Periode:** {int(gekozen_jaar)}-{str(int(gekozen_maand)).zfill(2)}")
 
-bars = alt.Chart(dagelijks).mark_bar().encode(
+bars = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
     x=alt.X("Day:O", title="Dag van de maand"),
     y=alt.Y("AVG_Temperature:Q", title="Temperatuur (°C)"),
-    color=alt.value("skyblue"),
     tooltip=["Day", "AVG_Temperature"]
 )
 
@@ -89,7 +87,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 📤 Matplotlib-versie voor download
+# 📤 Matplotlib-versie voor JPEG-download
 fig, ax = plt.subplots()
 ax.bar(dagelijks["Day"], dagelijks["AVG_Temperature"], color="skyblue", label="Gemiddelde")
 ax.plot(dagelijks["Day"], dagelijks["Max_Temperature"], color="red", label="Maximum")
@@ -100,12 +98,21 @@ ax.set_ylabel("Temperatuur (°C)")
 ax.legend()
 fig.tight_layout()
 
-# 📥 Downloadknop
-img_buffer = io.BytesIO()
-fig.savefig(img_buffer, format="png")
+jpeg_buffer = io.BytesIO()
+fig.savefig(jpeg_buffer, format="jpeg")
 st.download_button(
-    label="📥 Download grafiek (PNG)",
-    data=img_buffer.getvalue(),
-    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_combinatiegrafiek.png",
-    mime="image/png"
+    label="📥 Download grafiek (JPEG)",
+    data=jpeg_buffer.getvalue(),
+    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_combinatiegrafiek.jpeg",
+    mime="image/jpeg"
+)
+
+# 📋 CSV-download van dagwaarden
+csv_buffer = io.StringIO()
+dagelijks.to_csv(csv_buffer, index=False)
+st.download_button(
+    label="📥 Download dagwaarden (CSV)",
+    data=csv_buffer.getvalue(),
+    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_dagwaarden.csv",
+    mime="text/csv"
 )
