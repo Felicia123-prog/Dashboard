@@ -216,15 +216,13 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_neerslag.jpeg",
     mime="image/jpeg"
 )
-# =========================
-# 🌬️ Windsnelheidsectie
-# =========================
+# 🌬️ Dagelijkse Windsnelheid
 st.header("🌬️ Dagelijkse Windsnelheid")
 
 # 📊 Staafdiagram voor gemiddelde windsnelheid
 bars_wind = alt.Chart(dagelijks_full).mark_bar(color="skyblue").encode(
     x=alt.X("Day:O", title="Dag van de maand"),
-    y=alt.Y("WindSpeedAVG:Q", title="Windsnelheid (knopen of m/s)"),
+    y=alt.Y("WindSpeedAVG:Q", title="Gemiddelde windsnelheid"),
     tooltip=["Day", "WindSpeedAVG"]
 )
 
@@ -237,7 +235,7 @@ line_max_wind = alt.Chart(dagelijks_full).mark_line(color="red").encode(
 
 st.altair_chart(bars_wind + line_max_wind, use_container_width=True)
 
-# 🎨 Legenda windsnelheid
+# 🎨 Legenda
 st.markdown("""
 <div style="margin-top: 10px;">
 <b>Legenda:</b><br>
