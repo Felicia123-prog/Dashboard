@@ -221,16 +221,15 @@ st.download_button(
 # =========================
 st.header("🌬️ Dagelijkse Windsnelheid")
 
-# 🧠 Voor grafiek: gemiddelde en maximum
-wind_df = dagelijks_full.copy()
-
-bars_wind = alt.Chart(wind_df).mark_bar(color="skyblue").encode(
+# 📊 Staafdiagram voor gemiddelde windsnelheid
+bars_wind = alt.Chart(dagelijks_full).mark_bar(color="skyblue").encode(
     x=alt.X("Day:O", title="Dag van de maand"),
-    y=alt.Y("WindSpeed:Q", title="Windsnelheid (knopen of m/s)"),
-    tooltip=["Day", "WindSpeed"]
+    y=alt.Y("WindSpeedAVG:Q", title="Windsnelheid (knopen of m/s)"),
+    tooltip=["Day", "WindSpeedAVG"]
 )
 
-line_max_wind = alt.Chart(wind_df).mark_line(color="red").encode(
+# 📈 Lijn voor maximale windsnelheid
+line_max_wind = alt.Chart(dagelijks_full).mark_line(color="red").encode(
     x="Day:O",
     y="WindSpeedMax:Q",
     tooltip=["Day", "WindSpeedMax"]
@@ -242,15 +241,15 @@ st.altair_chart(bars_wind + line_max_wind, use_container_width=True)
 st.markdown("""
 <div style="margin-top: 10px;">
 <b>Legenda:</b><br>
-🟦 Gemiddelde windsnelheid (WindSpeed)<br>
+🟦 Gemiddelde windsnelheid (WindSpeedAVG)<br>
 🔴 Maximale windsnelheid (WindSpeedMax)
 </div>
 """, unsafe_allow_html=True)
 
 # 📥 Download windsnelheid JPEG
 fig3, ax3 = plt.subplots()
-ax3.bar(wind_df["Day"], wind_df["WindSpeed"], color="skyblue", label="Gemiddelde")
-ax3.plot(wind_df["Day"], wind_df["WindSpeedMax"], color="red", label="Maximum")
+ax3.bar(dagelijks_full["Day"], dagelijks_full["WindSpeedAVG"], color="skyblue", label="Gemiddelde")
+ax3.plot(dagelijks_full["Day"], dagelijks_full["WindSpeedMax"], color="red", label="Maximum")
 ax3.set_title("Windsnelheid")
 ax3.set_xlabel("Dag van de maand")
 ax3.set_ylabel("Windsnelheid (knopen of m/s)")
@@ -265,4 +264,3 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windsnelheid.jpeg",
     mime="image/jpeg"
 )
-
