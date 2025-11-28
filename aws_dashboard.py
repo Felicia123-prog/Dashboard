@@ -54,7 +54,7 @@ dagelijks_full = (
         "Rainfall": "mean",
         "WindSpeedAVG": "mean",
         "WindSpeedMax": "max",
-        "WindDirectionAVG": "mean"
+        "WindDirectionAVG": "mean"  # in graden
     })
 )
 
@@ -266,16 +266,16 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichtingsectie – Windroos (AWS-data)
+# 🧭 Windrichtingsectie – Windroos
 # =========================
 st.header("🧭 Windrichting – Windroos")
 
-# ✅ Filter per station (StationID is de juiste kolomnaam)
+# ✅ Filter per station
 windroos_df = dagelijks_full[dagelijks_full["StationID"] == station].dropna(
     subset=["WindDirectionAVG", "WindSpeedAVG"]
 ).copy()
 
-# Als er geen data is → melding tonen
+# ❗ Als er geen data is → melding tonen
 if windroos_df.empty:
     st.warning(f"Geen windrichtingdata beschikbaar voor {station}.")
 else:
@@ -314,4 +314,3 @@ else:
         file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
         mime="image/jpeg"
     )
-
