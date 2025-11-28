@@ -52,8 +52,9 @@ dagelijks = (
         "Max_Temperature": "mean",
         "Min_Temperature": "mean",
         "Rainfall": "mean",
-        "WindSpeedAVG": "mean",   # gemiddelde windsnelheid
-        "WindSpeedMax": "max"     # maximale windsnelheid
+        "WindSpeedAVG": "mean",       # gemiddelde windsnelheid
+        "WindSpeedMax": "max",        # maximale windsnelheid
+        "WindDirectionAVG": "mean"    # gemiddelde windrichting per dag
     })
 )
 
@@ -298,4 +299,5 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
     mime="image/jpeg"
 )
+
 
