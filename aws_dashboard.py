@@ -266,28 +266,38 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichtingsectie (Windroos)
+# 🧭 Windrichtingsectie – Windroos
 # =========================
 st.header("🧭 Windrichting – Windroos")
 
-# Mapping van windrichting naar graden
+# 🔁 Mapping van richting naar graden
 richting_map = {
-    "N": 0, "NE": 45, "E": 90, "SE": 135,
-    "S": 180, "SW": 225, "W": 270, "NW": 315
+    "N": 0, "NNE": 22.5, "NE": 45, "ENE": 67.5,
+    "E": 90, "ESE": 112.5, "SE": 135, "SSE": 157.5,
+    "S": 180, "SSW": 202.5, "SW": 225, "WSW": 247.5,
+    "W": 270, "WNW": 292.5, "NW": 315, "NNW": 337.5
 }
 
-wind_df = dagelijks_full.copy()
-wind_df = wind_df.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"])
-wind_df["Degrees"] = wind_df["WindDirectionAVG"].map(richting_map)
+# 🧼 Filter en omzetting
+windroos_df = dagelijks_full.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"]).copy()
+windroos_df["Degrees"] = windroos_df["WindDirectionAVG"].map(richting_map)
 
-# 🎨 Windroos plot (hoogte = gemiddelde windsnelheid)
+# ❗ Filter onbekende richtingen
+windroos_df = windroos_df.dropna(subset=["Degrees"])
+
+# 📊 Groeperen per richting
+windroos_data = windroos_df.groupby("Degrees", as_index=False).agg({
+    "WindSpeedAVG": "mean"
+}).sort_values("Degrees")
+
+# 🎨 Windroos plot
 fig4, ax4 = plt.subplots(subplot_kw={"projection": "polar"})
-angles = wind_df["Degrees"] * (3.14159/180)  # graden naar radian
-bars = ax4.bar(angles, wind_df["WindSpeedAVG"], width=0.7,
+angles = windroos_data["Degrees"] * (3.14159 / 180)
+bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.5,
                color="dodgerblue", edgecolor="black")
 
-ax4.set_theta_zero_location("N")  # Noord bovenaan
-ax4.set_theta_direction(-1)       # klokwijzer richting
+ax4.set_theta_zero_location("N")
+ax4.set_theta_direction(-1)
 ax4.set_title("Windroos – Gemiddelde windsnelheid per richting")
 
 # 📥 Download windroos JPEG
@@ -299,5 +309,3 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
     mime="image/jpeg"
 )
-
-
