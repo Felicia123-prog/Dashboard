@@ -265,7 +265,7 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichting – Windroos (maandgemiddelde, knopen, compact en volledig gelabeld)
+# 🧭 Windrichting – Windroos (synop-stijl, knopen, compact)
 # =========================
 st.header("🧭 Windrichting – Windroos (maandgemiddelde, knopen)")
 
@@ -273,8 +273,8 @@ st.header("🧭 Windrichting – Windroos (maandgemiddelde, knopen)")
 maand_avg = (
     maand_df.groupby(["StationID", "Year", "Month"], as_index=False)
     .agg({
-        "WindDirectionAVG": "mean",   # richting in graden
-        "WindSpeedAVG": "mean"        # snelheid in knopen
+        "WindDirectionAVG": "mean",
+        "WindSpeedAVG": "mean"
     })
 )
 
@@ -285,43 +285,37 @@ windroos_df = maand_avg[
     (maand_avg["Month"] == gekozen_maand)
 ]
 
-# ❗ Foutafhandeling
 if windroos_df.empty or windroos_df["WindDirectionAVG"].isna().any() or windroos_df["WindSpeedAVG"].isna().any():
     st.warning(f"Geen geldige windrichtingdata beschikbaar voor {station} in {gekozen_maand}-{gekozen_jaar}.")
 else:
-    # 📊 Data voorbereiden
     angle = windroos_df["WindDirectionAVG"].values[0] * (3.14159 / 180)
     speed = windroos_df["WindSpeedAVG"].values[0]
+    schaal = round(speed * 1.2, 1)
 
-    # 📈 Compacte windroos plot
-    fig4, ax4 = plt.subplots(figsize=(2.2, 2.2), subplot_kw={"projection": "polar"})
-    bars = ax4.bar([angle], [speed], width=0.35,
-                   color="dodgerblue", edgecolor="black")
+    fig4, ax4 = plt.subplots(figsize=(2.0, 2.0), subplot_kw={"projection": "polar"})
+    bars = ax4.bar([angle], [speed], width=0.35, color="dodgerblue", edgecolor="black")
 
-    # 🧭 Noord bovenaan, klokwijzer
     ax4.set_theta_zero_location("N")
     ax4.set_theta_direction(-1)
+    ax4.set_ylim(0, schaal)
 
-    # 📏 Dynamische schaal in knopen
-    ax4.set_ylim(0, speed * 1.2)
-
-    # 🏷️ Richtinglabels + graden
+    # ✅ Richtinglabels met graden
     ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
     labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
               "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
     ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
-    ax4.set_xticklabels(labels, fontsize=7)
+    ax4.set_xticklabels(labels, fontsize=6)
 
-    # 🎯 Titel klein en strak
-    ax4.set_title(f"{station} – Windroos", fontsize=8)
+    # ✅ Cirkel-labels voor schaal
+    ax4.set_yticks([schaal * 0.25, schaal * 0.5, schaal * 0.75, schaal])
+    ax4.set_yticklabels([f"{round(schaal * 0.25,1)}", f"{round(schaal * 0.5,1)}",
+                         f"{round(schaal * 0.75,1)}", f"{round(schaal,1)}"], fontsize=5)
 
-    # 🔧 Strakke layout
+    ax4.set_title(f"{station} – Windroos", fontsize=7)
     plt.tight_layout(pad=0.2)
 
-    # ✅ Windroos tonen
     st.pyplot(fig4)
 
-    # 📥 Download windroos JPEG
     jpeg_buffer4 = io.BytesIO()
     fig4.savefig(jpeg_buffer4, format="jpeg")
     st.download_button(
