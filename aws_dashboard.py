@@ -44,7 +44,9 @@ if maand_df.empty:
     st.warning("📭 Geen gegevens voor deze selectie.")
     st.stop()
 
-# 📊 Dagelijkse aggregatie
+# =========================
+# 📊 Aggregatie per station
+# =========================
 dagelijks_full = (
     maand_df.groupby(["StationID", "Year", "Month", "Day"], as_index=False)
     .agg({
@@ -54,7 +56,7 @@ dagelijks_full = (
         "Rainfall": "mean",
         "WindSpeedAVG": "mean",
         "WindSpeedMax": "max",
-        "WindDirectionAVG": "mean"  # in graden
+        "WindDirectionAVG": "mean"
     })
 )
 
