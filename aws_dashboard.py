@@ -265,11 +265,11 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windroos (maandgemiddelde windrichting en windsnelheid in knopen, compact)
+# 🧭 Windrichting – Windroos (maandgemiddelde, knopen, compact en volledig gelabeld)
 # =========================
-st.header("🧭 Windroos (maandgemiddelde windrichting en windsnelheid in knopen)")
+st.header("🧭 Windrichting – Windroos (maandgemiddelde, knopen)")
 
-# 📊 Bereken maandgemiddelde per station
+# 📊 Maandgemiddelde per station
 maand_avg = (
     maand_df.groupby(["StationID", "Year", "Month"], as_index=False)
     .agg({
@@ -285,7 +285,7 @@ windroos_df = maand_avg[
     (maand_avg["Month"] == gekozen_maand)
 ]
 
-# ❗ Als er geen data is → melding tonen
+# ❗ Foutafhandeling
 if windroos_df.empty or windroos_df["WindDirectionAVG"].isna().any() or windroos_df["WindSpeedAVG"].isna().any():
     st.warning(f"Geen geldige windrichtingdata beschikbaar voor {station} in {gekozen_maand}-{gekozen_jaar}.")
 else:
@@ -294,7 +294,7 @@ else:
     speed = windroos_df["WindSpeedAVG"].values[0]
 
     # 📈 Compacte windroos plot
-    fig4, ax4 = plt.subplots(figsize=(2.4, 2.4), subplot_kw={"projection": "polar"})
+    fig4, ax4 = plt.subplots(figsize=(2.2, 2.2), subplot_kw={"projection": "polar"})
     bars = ax4.bar([angle], [speed], width=0.35,
                    color="dodgerblue", edgecolor="black")
 
@@ -307,7 +307,8 @@ else:
 
     # 🏷️ Richtinglabels + graden
     ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
-    labels = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
+              "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
     ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
     ax4.set_xticklabels(labels, fontsize=7)
 
@@ -315,7 +316,7 @@ else:
     ax4.set_title(f"{station} – Windroos", fontsize=8)
 
     # 🔧 Strakke layout
-    plt.tight_layout(pad=0.3)
+    plt.tight_layout(pad=0.2)
 
     # ✅ Windroos tonen
     st.pyplot(fig4)
@@ -329,4 +330,3 @@ else:
         file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
         mime="image/jpeg"
     )
-
