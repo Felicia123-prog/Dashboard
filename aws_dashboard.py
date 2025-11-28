@@ -219,7 +219,7 @@ st.download_button(
     mime="image/jpeg"
 )
 # 🌬️ Dagelijkse Windsnelheid
-st.header("🌬️ Dagelijkse Windsnelheid")
+st.header("🌬️ Dagelijkse Windsnelheid in knopen")
 
 # 📊 Staafdiagram voor gemiddelde windsnelheid
 bars_wind = alt.Chart(dagelijks).mark_bar(color="skyblue").encode(
@@ -265,11 +265,11 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichting – Windroos (maandgemiddelde, knopen)
+# 🧭 Windroos (maandgemiddelde windrichting en windsnelheid in knopen, compact)
 # =========================
 st.header("🧭 Windrichting – Windroos (maandgemiddelde, knopen)")
 
-# ✅ Bereken maandgemiddelde per station
+# 📊 Bereken maandgemiddelde per station
 maand_avg = (
     maand_df.groupby(["StationID", "Year", "Month"], as_index=False)
     .agg({
@@ -294,23 +294,28 @@ else:
     speed = windroos_df["WindSpeedAVG"].values[0]
 
     # 📈 Compacte windroos plot
-    fig4, ax4 = plt.subplots(figsize=(2.8, 2.8), subplot_kw={"projection": "polar"})
+    fig4, ax4 = plt.subplots(figsize=(2.4, 2.4), subplot_kw={"projection": "polar"})
     bars = ax4.bar([angle], [speed], width=0.35,
                    color="dodgerblue", edgecolor="black")
 
     # 🧭 Noord bovenaan, klokwijzer
     ax4.set_theta_zero_location("N")
     ax4.set_theta_direction(-1)
-    ax4.set_title(f"{station} – Windroos ({gekozen_maand}-{gekozen_jaar})", fontsize=9)
+
+    # 📏 Dynamische schaal in knopen
+    ax4.set_ylim(0, speed * 1.2)
 
     # 🏷️ Richtinglabels + graden
     ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
     labels = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
-    ax4.set_xticklabels(labels, fontsize=8)
+    ax4.set_xticklabels(labels, fontsize=7)
 
-    # 📏 Dynamische schaal in knopen
-    ax4.set_ylim(0, speed * 1.2)  # 20% marge boven de max waarde
+    # 🎯 Titel klein en strak
+    ax4.set_title(f"{station} – Windroos", fontsize=8)
+
+    # 🔧 Strakke layout
+    plt.tight_layout(pad=0.3)
 
     # ✅ Windroos tonen
     st.pyplot(fig4)
