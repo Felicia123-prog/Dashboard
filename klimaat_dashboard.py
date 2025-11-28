@@ -65,7 +65,7 @@ plot_element("Pressure", "green", "Luchtdruk", "hPa")
 plot_element("Wind Velocity", "gray", "Windsnelheid", "knopen")
 plot_element("Wind direction", "purple", "Windrichting", "°")
 
-# 📊 Windroos op pagina
+# 📊 Windroos op pagina (Synop – snelheid + frequentie)
 if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
     filtered["WindDirBin"] = pd.cut(
         filtered["Wind direction"],
@@ -73,61 +73,65 @@ if "Wind direction" in filtered.columns and "Wind Velocity" in filtered.columns:
         labels=[f"{i}°–{i+30}°" for i in range(0, 360, 30)],
         include_lowest=True
     )
-    windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
-    windroos_data.dropna(inplace=True)
+
+    # Gemiddelde snelheid per richtingbin
+    windroos_speed = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
+    windroos_speed.dropna(inplace=True)
+
+    # Frequentie per richtingbin
+    windroos_freq = filtered["WindDirBin"].value_counts().reset_index()
+    windroos_freq.columns = ["WindDirBin", "Count"]
+
     def bin_to_angle(label):
         start = int(label.split("°")[0])
         return np.deg2rad(start + 15)
-    angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
-    speeds = windroos_data["Wind Velocity"].values
-    if len(angles) == len(speeds):
-        fig_roos, ax_roos = plt.subplots(subplot_kw={'projection': 'polar'})
-        ax_roos.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
-        ax_roos.set_theta_zero_location("N")
-        ax_roos.set_theta_direction(-1)
-        ax_roos.set_title("🌬️ Windroos – Windsnelheid per richting", va='bottom')
+
+    angles_speed = windroos_speed["WindDirBin"].apply(bin_to_angle).values
+    speeds = windroos_speed["Wind Velocity"].values
+
+    angles_freq = windroos_freq["WindDirBin"].apply(bin_to_angle).values
+    counts = windroos_freq["Count"].values
+
+    if len(angles_speed) == len(speeds) and len(angles_freq) == len(counts):
+        fig_roos, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.4),
+                                            subplot_kw={'projection': 'polar'})
+
+        # 🔹 Snelheid per richting
+        ax1.bar(angles_speed, speeds, width=np.deg2rad(30), bottom=0,
+                color='skyblue', edgecolor='gray')
+        ax1.set_theta_zero_location("N")
+        ax1.set_theta_direction(-1)
+        ax1.set_title("Gemiddelde snelheid (knopen)", fontsize=7, va='bottom')
+
+        # 🔹 Frequentie per richting
+        ax2.bar(angles_freq, counts, width=np.deg2rad(30), bottom=0,
+                color='lightgreen', edgecolor='gray')
+        ax2.set_theta_zero_location("N")
+        ax2.set_theta_direction(-1)
+        ax2.set_title("Frequentie (aantal)", fontsize=7, va='bottom')
+
+        # Richtinglabels + graden
+        ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
+        labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
+                  "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
+        for ax in [ax1, ax2]:
+            ax.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
+            ax.set_xticklabels(labels, fontsize=6)
+
+        plt.tight_layout(pad=0.3)
+
+        # ✅ Windrozen tonen
         st.pyplot(fig_roos)
 
-# 📤 Grafieken exporteren
-fig_paths = {}
-def save_plot(fig, name):
-    path = f"{station}_{name}.png"
-    fig.savefig(path)
-    plt.close(fig)
-    fig_paths[name] = path
+        # 📤 Opslaan voor PDF
+        fig_paths = {}
+        def save_plot(fig, name):
+            path = f"{station}_{name}.png"
+            fig.savefig(path)
+            plt.close(fig)
+            fig_paths[name] = path
 
-grafieken = {
-    "temp": ("Temperature", "orange", "Temperatuur"),
-    "rh": ("RH", "blue", "Relatieve vochtigheid"),
-    "pressure": ("Pressure", "green", "Luchtdruk"),
-    "wind": ("Wind Velocity", "gray", "Windsnelheid"),
-    "dir": ("Wind direction", "purple", "Windrichting"),
-    "cloud": ("Total Cloud Coverage", "lightblue", "Bewolking")
-}
-
-for key, (kolom, kleur, titel) in grafieken.items():
-    if kolom in filtered.columns and not filtered[kolom].dropna().empty:
-        fig, ax = plt.subplots()
-        ax.plot(filtered["Datum"], filtered[kolom], color=kleur)
-        ax.set_title(f"{titel} – verloop binnen dag")
-        save_plot(fig, key)
-
-# 📤 Windroos exporteren
-if "WindDirBin" in filtered.columns and "Wind Velocity" in filtered.columns:
-    windroos_data = filtered.groupby("WindDirBin")["Wind Velocity"].mean().reset_index()
-    windroos_data.dropna(inplace=True)
-    def bin_to_angle(label):
-        start = int(label.split("°")[0])
-        return np.deg2rad(start + 15)
-    angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
-    speeds = windroos_data["Wind Velocity"].values
-    if len(angles) == len(speeds):
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-        ax.bar(angles, speeds, width=np.deg2rad(30), bottom=0, color='skyblue', edgecolor='gray')
-        ax.set_theta_zero_location("N")
-        ax.set_theta_direction(-1)
-        ax.set_title("Windroos – Windsnelheid per richting")
-        save_plot(fig, "roos")
+        save_plot(fig_roos, "roos_duo")
 
 # 📄 PDF-generatie
 pdf_buffer = io.BytesIO()
@@ -137,7 +141,7 @@ c.drawString(2*cm, 28*cm, f"📄 Klimaatrapport – {station}")
 c.drawString(2*cm, 27.3*cm, f"Datum: {datum_keuze}")
 
 # 📊 Voeg grafieken toe aan PDF
-grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos"]
+grafiek_volgorde = ["temp", "rh", "pressure", "wind", "dir", "cloud", "roos_duo"]
 for i, key in enumerate(grafiek_volgorde):
     if key in fig_paths:
         y_pos = 17*cm - (8.5*cm * (i % 3))
