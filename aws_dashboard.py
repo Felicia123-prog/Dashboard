@@ -278,33 +278,34 @@ richting_map = {
     "W": 270, "WNW": 292.5, "NW": 315, "NNW": 337.5
 }
 
-# Filter en omzetting
+# 🧼 Filter en omzetting
 windroos_df = dagelijks.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"]).copy()
 windroos_df["Degrees"] = windroos_df["WindDirectionAVG"].map(richting_map)
 windroos_df = windroos_df.dropna(subset=["Degrees"])
 
-# Groeperen per richting
+# 📊 Groeperen per richting
 windroos_data = windroos_df.groupby("Degrees", as_index=False).agg({
     "WindSpeedAVG": "mean"
 }).sort_values("Degrees")
 
-# Windroos plot
+# 📈 Windroos plot
 fig4, ax4 = plt.subplots(subplot_kw={"projection": "polar"})
 angles = windroos_data["Degrees"] * (3.14159 / 180)
 bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.35,
                color="dodgerblue", edgecolor="black")
 
-# Noord bovenaan, klokwijzer
+# 🧭 Noord bovenaan, klokwijzer
 ax4.set_theta_zero_location("N")
 ax4.set_theta_direction(-1)
 ax4.set_title("Windroos – Windsnelheid per richting")
 
-# Richtinglabels + graden
-ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
-labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
-          "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
-ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
-ax4.set_xticklabels(labels)
+# 🏷️ Richtinglabels + graden
+richting_labels = {
+    0: "N (0°)", 45: "NE (45°)", 90: "E (90°)", 135: "SE (135°)",
+    180: "S (180°)", 225: "SW (225°)", 270: "W (270°)", 315: "NW (315°)"
+}
+ax4.set_xticks([deg * (3.14159 / 180) for deg in richting_labels.keys()])
+ax4.set_xticklabels(list(richting_labels.values()))
 
 # ✅ Windroos tonen op de pagina
 st.pyplot(fig4)
