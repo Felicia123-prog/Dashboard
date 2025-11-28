@@ -44,10 +44,7 @@ if maand_df.empty:
     st.warning("📭 Geen gegevens voor deze selectie.")
     st.stop()
 
-# =========================
-# 📊 Aggregatie per station
-# =========================
-dagelijks_full = (
+dagelijks = (
     maand_df.groupby(["StationID", "Year", "Month", "Day"], as_index=False)
     .agg({
         "AVG_Temperature": "mean",
@@ -316,3 +313,4 @@ else:
         file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
         mime="image/jpeg"
     )
+
