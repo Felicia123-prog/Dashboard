@@ -270,7 +270,7 @@ st.download_button(
 # =========================
 st.header("🧭 Windrichting – Windroos")
 
-# ✅ Filter per station
+# ✅ Filter per station (StationID is de juiste kolomnaam)
 windroos_df = dagelijks_full[dagelijks_full["StationID"] == station].dropna(
     subset=["WindDirectionAVG", "WindSpeedAVG"]
 ).copy()
