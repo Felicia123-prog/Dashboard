@@ -266,11 +266,11 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichtingsectie – Windroos
+# 🧭 Windrichtingsectie – Windroos (AWS-stijl zoals synop)
 # =========================
 st.header("🧭 Windrichting – Windroos")
 
-# 🔁 Mapping van richting naar graden
+# Richting naar graden
 richting_map = {
     "N": 0, "NNE": 22.5, "NE": 45, "ENE": 67.5,
     "E": 90, "ESE": 112.5, "SE": 135, "SSE": 157.5,
@@ -278,19 +278,23 @@ richting_map = {
     "W": 270, "WNW": 292.5, "NW": 315, "NNW": 337.5
 }
 
-# 🧼 Filter en omzetting
-windroos_df = dagelijks_full.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"]).copy()
+# Filter en omzetting
+windroos_df = dagelijks.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"]).copy()
 windroos_df["Degrees"] = windroos_df["WindDirectionAVG"].map(richting_map)
-
-# ❗ Filter onbekende richtingen
 windroos_df = windroos_df.dropna(subset=["Degrees"])
 
-# 📊 Groeperen per richting
+# Groeperen per richting
 windroos_data = windroos_df.groupby("Degrees", as_index=False).agg({
     "WindSpeedAVG": "mean"
 }).sort_values("Degrees")
 
-# 🎨 Windroos plot
+# Richtinglabels voor cirkel
+richting_labels = {
+    0: "N", 45: "NE", 90: "E", 135: "SE",
+    180: "S", 225: "SW", 270: "W", 315: "NW"
+}
+
+# Windroos plot
 fig4, ax4 = plt.subplots(subplot_kw={"projection": "polar"})
 angles = windroos_data["Degrees"] * (3.14159 / 180)
 bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.5,
@@ -298,9 +302,16 @@ bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.5,
 
 ax4.set_theta_zero_location("N")
 ax4.set_theta_direction(-1)
-ax4.set_title("Windroos – Gemiddelde windsnelheid per richting")
+ax4.set_title("Windroos – Windsnelheid per richting")
 
-# 📥 Download windroos JPEG
+# Richtinglabels op de cirkel
+ax4.set_xticks([deg * (3.14159 / 180) for deg in richting_labels.keys()])
+ax4.set_xticklabels([richting_labels[deg] for deg in richting_labels])
+
+# Windroos tonen
+st.pyplot(fig4)
+
+# Downloadknop
 jpeg_buffer4 = io.BytesIO()
 fig4.savefig(jpeg_buffer4, format="jpeg")
 st.download_button(
