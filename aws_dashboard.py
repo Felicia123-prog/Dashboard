@@ -267,7 +267,7 @@ st.download_button(
 # =========================
 # 🧭 Windroos (maandgemiddelde windrichting en windsnelheid in knopen, compact)
 # =========================
-st.header("🧭 Windrichting – Windroos (maandgemiddelde, knopen)")
+st.header("🧭 Windroos (maandgemiddelde windrichting en windsnelheid in knopen)")
 
 # 📊 Bereken maandgemiddelde per station
 maand_avg = (
@@ -329,3 +329,4 @@ else:
         file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
         mime="image/jpeg"
     )
+
