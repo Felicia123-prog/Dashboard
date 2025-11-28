@@ -265,12 +265,8 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windsnelheid.jpeg",
     mime="image/jpeg"
 )
-# =========================
-# 🧭 Windrichtingsectie – Windroos (AWS-stijl zoals synop)
-# =========================
 st.header("🧭 Windrichting – Windroos")
 
-# Richting naar graden
 richting_map = {
     "N": 0, "NNE": 22.5, "NE": 45, "ENE": 67.5,
     "E": 90, "ESE": 112.5, "SE": 135, "SSE": 157.5,
@@ -278,8 +274,11 @@ richting_map = {
     "W": 270, "WNW": 292.5, "NW": 315, "NNW": 337.5
 }
 
-# ✅ Gebruik gefilterde data per station
-windroos_df = dagelijks_full.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"]).copy()
+# ✅ Filter per station
+windroos_df = dagelijks_full[dagelijks_full["Station"] == station].dropna(
+    subset=["WindDirectionAVG", "WindSpeedAVG"]
+).copy()
+
 windroos_df["Degrees"] = windroos_df["WindDirectionAVG"].map(richting_map)
 windroos_df = windroos_df.dropna(subset=["Degrees"])
 
@@ -288,16 +287,15 @@ windroos_data = windroos_df.groupby("Degrees", as_index=False).agg({
     "WindSpeedAVG": "mean"
 }).sort_values("Degrees")
 
-# 📈 Windroos plot
-fig4, ax4 = plt.subplots(figsize=(6, 6), subplot_kw={"projection": "polar"})
+# 📈 Compacte windroos plot
+fig4, ax4 = plt.subplots(figsize=(5, 5), subplot_kw={"projection": "polar"})
 angles = windroos_data["Degrees"] * (3.14159 / 180)
 bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.35,
                color="dodgerblue", edgecolor="black")
 
-# 🧭 Noord bovenaan, klokwijzer
 ax4.set_theta_zero_location("N")
 ax4.set_theta_direction(-1)
-ax4.set_title("Windroos – Windsnelheid per richting")
+ax4.set_title(f"Windroos – {station}")
 
 # 🏷️ Richtinglabels + graden
 ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
@@ -306,7 +304,7 @@ labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
 ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
 ax4.set_xticklabels(labels)
 
-# ✅ Windroos tonen op de pagina
+# ✅ Windroos tonen
 st.pyplot(fig4)
 
 # 📥 Download windroos JPEG
