@@ -288,30 +288,28 @@ windroos_data = windroos_df.groupby("Degrees", as_index=False).agg({
     "WindSpeedAVG": "mean"
 }).sort_values("Degrees")
 
-# Richtinglabels voor cirkel
-richting_labels = {
-    0: "N", 45: "NE", 90: "E", 135: "SE",
-    180: "S", 225: "SW", 270: "W", 315: "NW"
-}
-
 # Windroos plot
 fig4, ax4 = plt.subplots(subplot_kw={"projection": "polar"})
 angles = windroos_data["Degrees"] * (3.14159 / 180)
-bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.5,
+bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.35,
                color="dodgerblue", edgecolor="black")
 
+# Noord bovenaan, klokwijzer
 ax4.set_theta_zero_location("N")
 ax4.set_theta_direction(-1)
 ax4.set_title("Windroos – Windsnelheid per richting")
 
-# Richtinglabels op de cirkel
-ax4.set_xticks([deg * (3.14159 / 180) for deg in richting_labels.keys()])
-ax4.set_xticklabels([richting_labels[deg] for deg in richting_labels])
+# Richtinglabels + graden
+ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
+labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
+          "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
+ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
+ax4.set_xticklabels(labels)
 
-# Windroos tonen
+# ✅ Windroos tonen op de pagina
 st.pyplot(fig4)
 
-# Downloadknop
+# 📥 Download windroos JPEG
 jpeg_buffer4 = io.BytesIO()
 fig4.savefig(jpeg_buffer4, format="jpeg")
 st.download_button(
