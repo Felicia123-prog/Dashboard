@@ -266,13 +266,11 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichting – Windroos (synop-stijl, knopen, compact)
+# 🧭 Windrichting – Windroos (AWS, snelheid + frequentie)
 # =========================
-st.header("🧭 Windroos – Windsnelheid per richting")
+st.header("🧭 Windroos – AWS Windsnelheid en Frequentie per richting")
 
-# ✅ Check of kolommen bestaan
 if "WindDirectionAVG" in maand_df.columns and "WindSpeedAVG" in maand_df.columns:
-    # ✅ Filter voor gekozen station en maand
     filtered = maand_df[
         (maand_df["StationID"] == station) &
         (maand_df["Year"] == gekozen_jaar) &
@@ -291,56 +289,63 @@ if "WindDirectionAVG" in maand_df.columns and "WindSpeedAVG" in maand_df.columns
         )
 
         # 📊 Gemiddelde snelheid per richtingbin
-        windroos_data = filtered.groupby("WindDirBin")["WindSpeedAVG"].mean().reset_index()
-        windroos_data.dropna(inplace=True)
+        windroos_speed = filtered.groupby("WindDirBin")["WindSpeedAVG"].mean().reset_index()
+        windroos_speed.dropna(inplace=True)
+
+        # 📊 Frequentie per richtingbin (aantal observaties)
+        windroos_freq = filtered["WindDirBin"].value_counts().reset_index()
+        windroos_freq.columns = ["WindDirBin", "Count"]
 
         # 📐 Bin-labels omzetten naar hoeken
         def bin_to_angle(label):
             start = int(label.split("°")[0])
             return np.deg2rad(start + 15)
 
-        angles = windroos_data["WindDirBin"].apply(bin_to_angle).values
-        speeds = windroos_data["WindSpeedAVG"].values
+        angles_speed = windroos_speed["WindDirBin"].apply(bin_to_angle).values
+        speeds = windroos_speed["WindSpeedAVG"].values
 
-        if len(angles) == len(speeds):
-            fig_roos, ax_roos = plt.subplots(figsize=(2.4, 2.4), subplot_kw={'projection': 'polar'})
-            ax_roos.bar(angles, speeds, width=np.deg2rad(30), bottom=0,
-                        color='skyblue', edgecolor='gray')
+        angles_freq = windroos_freq["WindDirBin"].apply(bin_to_angle).values
+        counts = windroos_freq["Count"].values
 
-            # 🧭 Noord bovenaan, klokwijzer
-            ax_roos.set_theta_zero_location("N")
-            ax_roos.set_theta_direction(-1)
+        # =========================
+        # 📈 Twee plots naast elkaar
+        # =========================
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5, 2.4),
+                                       subplot_kw={'projection': 'polar'})
 
-            # 🏷️ Richtinglabels + graden
-            ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
-            labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
-                      "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
-            ax_roos.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
-            ax_roos.set_xticklabels(labels, fontsize=6)
+        # 🔹 Snelheid per richting
+        ax1.bar(angles_speed, speeds, width=np.deg2rad(30), bottom=0,
+                color='skyblue', edgecolor='gray')
+        ax1.set_theta_zero_location("N")
+        ax1.set_theta_direction(-1)
+        ax1.set_title("Gemiddelde snelheid (knopen)", fontsize=7, va='bottom')
 
-            # 📏 Cirkel-labels voor schaal
-            max_speed = speeds.max()
-            ax_roos.set_ylim(0, max_speed * 1.2)
-            ax_roos.set_yticks([max_speed * 0.25, max_speed * 0.5, max_speed * 0.75, max_speed])
-            ax_roos.set_yticklabels([f"{round(max_speed * 0.25,1)}", f"{round(max_speed * 0.5,1)}",
-                                     f"{round(max_speed * 0.75,1)}", f"{round(max_speed,1)}"], fontsize=5)
+        # 🔹 Frequentie per richting
+        ax2.bar(angles_freq, counts, width=np.deg2rad(30), bottom=0,
+                color='lightgreen', edgecolor='gray')
+        ax2.set_theta_zero_location("N")
+        ax2.set_theta_direction(-1)
+        ax2.set_title("Frequentie (aantal)", fontsize=7, va='bottom')
 
-            # 🎯 Titel klein en strak
-            ax_roos.set_title(f"{station} – Windroos", fontsize=7, va='bottom')
+        # 🏷️ Richtinglabels + graden voor beide
+        ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
+        labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
+                  "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
+        for ax in [ax1, ax2]:
+            ax.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
+            ax.set_xticklabels(labels, fontsize=6)
 
-            # 🔧 Strakke layout
-            plt.tight_layout(pad=0.3)
+        plt.tight_layout(pad=0.3)
 
-            # ✅ Windroos tonen
-            st.pyplot(fig_roos)
+        # ✅ Windrozen tonen
+        st.pyplot(fig)
 
-            # 📥 Downloadknop
-            jpeg_buffer_roos = io.BytesIO()
-            fig_roos.savefig(jpeg_buffer_roos, format="jpeg")
-            st.download_button(
-                label="📥 Download windroos (JPEG)",
-                data=jpeg_buffer_roos.getvalue(),
-                file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
-                mime="image/jpeg"
-            )
-
+        # 📥 Downloadknop
+        jpeg_buffer = io.BytesIO()
+        fig.savefig(jpeg_buffer, format="jpeg")
+        st.download_button(
+            label="📥 Download beide windrozen (JPEG)",
+            data=jpeg_buffer.getvalue(),
+            file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_AWS_windrozen.jpeg",
+            mime="image/jpeg"
+        )
