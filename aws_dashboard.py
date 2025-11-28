@@ -45,16 +45,16 @@ if maand_df.empty:
     st.stop()
 
 # 📊 Dagelijkse aggregatie
-dagelijks = (
-    maand_df.groupby(["Year", "Month", "Day"], as_index=False)
+dagelijks_full = (
+    maand_df.groupby(["StationID", "Year", "Month", "Day"], as_index=False)
     .agg({
         "AVG_Temperature": "mean",
         "Max_Temperature": "mean",
         "Min_Temperature": "mean",
         "Rainfall": "mean",
-        "WindSpeedAVG": "mean",       # gemiddelde windsnelheid
-        "WindSpeedMax": "max",        # maximale windsnelheid
-        "WindDirectionAVG": "mean"    # gemiddelde windrichting per dag
+        "WindSpeedAVG": "mean",
+        "WindSpeedMax": "max",
+        "WindDirectionAVG": "mean"
     })
 )
 
@@ -314,3 +314,4 @@ else:
         file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
         mime="image/jpeg"
     )
+
