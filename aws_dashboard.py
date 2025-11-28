@@ -265,54 +265,52 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windsnelheid.jpeg",
     mime="image/jpeg"
 )
+# =========================
+# 🧭 Windrichtingsectie – Windroos (AWS-data)
+# =========================
 st.header("🧭 Windrichting – Windroos")
 
-richting_map = {
-    "N": 0, "NNE": 22.5, "NE": 45, "ENE": 67.5,
-    "E": 90, "ESE": 112.5, "SE": 135, "SSE": 157.5,
-    "S": 180, "SSW": 202.5, "SW": 225, "WSW": 247.5,
-    "W": 270, "WNW": 292.5, "NW": 315, "NNW": 337.5
-}
-
 # ✅ Filter per station
-windroos_df = dagelijks_full[dagelijks_full["Station"] == station].dropna(
+windroos_df = dagelijks_full[dagelijks_full["StationID"] == station].dropna(
     subset=["WindDirectionAVG", "WindSpeedAVG"]
 ).copy()
 
-windroos_df["Degrees"] = windroos_df["WindDirectionAVG"].map(richting_map)
-windroos_df = windroos_df.dropna(subset=["Degrees"])
+# Als er geen data is → melding tonen
+if windroos_df.empty:
+    st.warning(f"Geen windrichtingdata beschikbaar voor {station}.")
+else:
+    # 📊 Groeperen per richting (WindDirectionAVG is al in graden)
+    windroos_data = windroos_df.groupby("WindDirectionAVG", as_index=False).agg({
+        "WindSpeedAVG": "mean"
+    }).sort_values("WindDirectionAVG")
 
-# 📊 Groeperen per richting
-windroos_data = windroos_df.groupby("Degrees", as_index=False).agg({
-    "WindSpeedAVG": "mean"
-}).sort_values("Degrees")
+    # 📈 Compacte windroos plot
+    fig4, ax4 = plt.subplots(figsize=(5, 5), subplot_kw={"projection": "polar"})
+    angles = windroos_data["WindDirectionAVG"] * (3.14159 / 180)
+    bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.35,
+                   color="dodgerblue", edgecolor="black")
 
-# 📈 Compacte windroos plot
-fig4, ax4 = plt.subplots(figsize=(5, 5), subplot_kw={"projection": "polar"})
-angles = windroos_data["Degrees"] * (3.14159 / 180)
-bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.35,
-               color="dodgerblue", edgecolor="black")
+    # 🧭 Noord bovenaan, klokwijzer
+    ax4.set_theta_zero_location("N")
+    ax4.set_theta_direction(-1)
+    ax4.set_title(f"Windroos – {station}")
 
-ax4.set_theta_zero_location("N")
-ax4.set_theta_direction(-1)
-ax4.set_title(f"Windroos – {station}")
+    # 🏷️ Richtinglabels + graden
+    ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
+    labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
+              "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
+    ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
+    ax4.set_xticklabels(labels)
 
-# 🏷️ Richtinglabels + graden
-ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
-labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
-          "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
-ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
-ax4.set_xticklabels(labels)
+    # ✅ Windroos tonen
+    st.pyplot(fig4)
 
-# ✅ Windroos tonen
-st.pyplot(fig4)
-
-# 📥 Download windroos JPEG
-jpeg_buffer4 = io.BytesIO()
-fig4.savefig(jpeg_buffer4, format="jpeg")
-st.download_button(
-    label="📥 Download windroos (JPEG)",
-    data=jpeg_buffer4.getvalue(),
-    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
-    mime="image/jpeg"
-)
+    # 📥 Download windroos JPEG
+    jpeg_buffer4 = io.BytesIO()
+    fig4.savefig(jpeg_buffer4, format="jpeg")
+    st.download_button(
+        label="📥 Download windroos (JPEG)",
+        data=jpeg_buffer4.getvalue(),
+        file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
+        mime="image/jpeg"
+    )
