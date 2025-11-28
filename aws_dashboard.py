@@ -264,3 +264,38 @@ st.download_button(
     file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windsnelheid.jpeg",
     mime="image/jpeg"
 )
+# =========================
+# 🧭 Windrichtingsectie (Windroos)
+# =========================
+st.header("🧭 Windrichting – Windroos")
+
+# Mapping van windrichting naar graden
+richting_map = {
+    "N": 0, "NE": 45, "E": 90, "SE": 135,
+    "S": 180, "SW": 225, "W": 270, "NW": 315
+}
+
+wind_df = dagelijks_full.copy()
+wind_df = wind_df.dropna(subset=["WindDirectionAVG", "WindSpeedAVG"])
+wind_df["Degrees"] = wind_df["WindDirectionAVG"].map(richting_map)
+
+# 🎨 Windroos plot (hoogte = gemiddelde windsnelheid)
+fig4, ax4 = plt.subplots(subplot_kw={"projection": "polar"})
+angles = wind_df["Degrees"] * (3.14159/180)  # graden naar radian
+bars = ax4.bar(angles, wind_df["WindSpeedAVG"], width=0.7,
+               color="dodgerblue", edgecolor="black")
+
+ax4.set_theta_zero_location("N")  # Noord bovenaan
+ax4.set_theta_direction(-1)       # klokwijzer richting
+ax4.set_title("Windroos – Gemiddelde windsnelheid per richting")
+
+# 📥 Download windroos JPEG
+jpeg_buffer4 = io.BytesIO()
+fig4.savefig(jpeg_buffer4, format="jpeg")
+st.download_button(
+    label="📥 Download windroos (JPEG)",
+    data=jpeg_buffer4.getvalue(),
+    file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
+    mime="image/jpeg"
+)
+
