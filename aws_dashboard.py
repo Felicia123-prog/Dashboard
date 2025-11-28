@@ -265,18 +265,20 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichting – Windroos (maandgemiddelde)
+# 📊 Maandgemiddelde per station
 # =========================
-st.header("🧭 Windrichting – Windroos (maandgemiddelde)")
-
-# ✅ Bereken maandgemiddelde per station
 maand_avg = (
     maand_df.groupby(["StationID", "Year", "Month"], as_index=False)
     .agg({
-        "WindDirectionAVG": "mean",   # richting in graden
-        "WindSpeedAVG": "mean"        # snelheid in m/s of km/u
+        "WindDirectionAVG": "mean",   # gemiddelde richting over de maand
+        "WindSpeedAVG": "mean"        # gemiddelde snelheid over de maand
     })
 )
+
+# =========================
+# 🧭 Windrichtingsectie – Windroos
+# =========================
+st.header("🧭 Windrichting – Windroos (maandgemiddelde)")
 
 # ✅ Filter voor gekozen station en maand
 windroos_df = maand_avg[
@@ -286,15 +288,17 @@ windroos_df = maand_avg[
 ]
 
 # ❗ Als er geen data is → melding tonen
-if windroos_df.empty:
-    st.warning(f"Geen windrichtingdata beschikbaar voor {station} in {gekozen_maand}-{gekozen_jaar}.")
+if windroos_df.empty or windroos_df["WindDirectionAVG"].isna().any() or windroos_df["WindSpeedAVG"].isna().any():
+    st.warning(f"Geen geldige windrichtingdata beschikbaar voor {station} in {gekozen_maand}-{gekozen_jaar}.")
 else:
-    # 📈 Windroos plot met één balk
+    # 📊 Data voorbereiden
     angle = windroos_df["WindDirectionAVG"].values[0] * (3.14159 / 180)
     speed = windroos_df["WindSpeedAVG"].values[0]
 
+    # 📈 Compacte windroos plot
     fig4, ax4 = plt.subplots(figsize=(3.5, 3.5), subplot_kw={"projection": "polar"})
-    bar = ax4.bar([angle], [speed], width=0.35, color="dodgerblue", edgecolor="black")
+    bars = ax4.bar([angle], [speed], width=0.35,
+                   color="dodgerblue", edgecolor="black")
 
     # 🧭 Noord bovenaan, klokwijzer
     ax4.set_theta_zero_location("N")
@@ -311,7 +315,7 @@ else:
     # ✅ Windroos tonen
     st.pyplot(fig4)
 
-    # 📥 Downloadknop
+    # 📥 Download windroos JPEG
     jpeg_buffer4 = io.BytesIO()
     fig4.savefig(jpeg_buffer4, format="jpeg")
     st.download_button(
