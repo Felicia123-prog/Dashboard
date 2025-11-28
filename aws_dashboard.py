@@ -265,34 +265,41 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 🧭 Windrichtingsectie – Windroos
+# 🧭 Windrichting – Windroos (maandgemiddelde)
 # =========================
-st.header("🧭 Windrichting – Windroos")
+st.header("🧭 Windrichting – Windroos (maandgemiddelde)")
 
-# ✅ Filter per station
-windroos_df = dagelijks_full[dagelijks_full["StationID"] == station].dropna(
-    subset=["WindDirectionAVG", "WindSpeedAVG"]
-).copy()
+# ✅ Bereken maandgemiddelde per station
+maand_avg = (
+    maand_df.groupby(["StationID", "Year", "Month"], as_index=False)
+    .agg({
+        "WindDirectionAVG": "mean",   # richting in graden
+        "WindSpeedAVG": "mean"        # snelheid in m/s of km/u
+    })
+)
+
+# ✅ Filter voor gekozen station en maand
+windroos_df = maand_avg[
+    (maand_avg["StationID"] == station) &
+    (maand_avg["Year"] == gekozen_jaar) &
+    (maand_avg["Month"] == gekozen_maand)
+]
 
 # ❗ Als er geen data is → melding tonen
 if windroos_df.empty:
-    st.warning(f"Geen windrichtingdata beschikbaar voor {station}.")
+    st.warning(f"Geen windrichtingdata beschikbaar voor {station} in {gekozen_maand}-{gekozen_jaar}.")
 else:
-    # 📊 Groeperen per richting (WindDirectionAVG is al in graden)
-    windroos_data = windroos_df.groupby("WindDirectionAVG", as_index=False).agg({
-        "WindSpeedAVG": "mean"
-    }).sort_values("WindDirectionAVG")
+    # 📈 Windroos plot met één balk
+    angle = windroos_df["WindDirectionAVG"].values[0] * (3.14159 / 180)
+    speed = windroos_df["WindSpeedAVG"].values[0]
 
-    # 📈 Compacte windroos plot
-    fig4, ax4 = plt.subplots(figsize=(5, 5), subplot_kw={"projection": "polar"})
-    angles = windroos_data["WindDirectionAVG"] * (3.14159 / 180)
-    bars = ax4.bar(angles, windroos_data["WindSpeedAVG"], width=0.35,
-                   color="dodgerblue", edgecolor="black")
+    fig4, ax4 = plt.subplots(figsize=(3.5, 3.5), subplot_kw={"projection": "polar"})
+    bar = ax4.bar([angle], [speed], width=0.35, color="dodgerblue", edgecolor="black")
 
     # 🧭 Noord bovenaan, klokwijzer
     ax4.set_theta_zero_location("N")
     ax4.set_theta_direction(-1)
-    ax4.set_title(f"Windroos – {station}")
+    ax4.set_title(f"Windroos – {station} ({gekozen_maand}-{gekozen_jaar})")
 
     # 🏷️ Richtinglabels + graden
     ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
@@ -304,7 +311,7 @@ else:
     # ✅ Windroos tonen
     st.pyplot(fig4)
 
-    # 📥 Download windroos JPEG
+    # 📥 Downloadknop
     jpeg_buffer4 = io.BytesIO()
     fig4.savefig(jpeg_buffer4, format="jpeg")
     st.download_button(
@@ -313,4 +320,3 @@ else:
         file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
         mime="image/jpeg"
     )
-
