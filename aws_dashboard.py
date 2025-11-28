@@ -4,6 +4,7 @@ import altair as alt
 import matplotlib.pyplot as plt
 import io
 import calendar
+import numpy as np
 
 st.set_page_config(page_title="AWS data van Suriname", layout="wide")
 
@@ -342,3 +343,4 @@ if "WindDirectionAVG" in maand_df.columns and "WindSpeedAVG" in maand_df.columns
                 file_name=f"{station}_{gekozen_jaar}-{str(gekozen_maand).zfill(2)}_windroos.jpeg",
                 mime="image/jpeg"
             )
+
