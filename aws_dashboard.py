@@ -265,20 +265,18 @@ st.download_button(
     mime="image/jpeg"
 )
 # =========================
-# 📊 Maandgemiddelde per station
+# 🧭 Windrichting – Windroos (maandgemiddelde, knopen)
 # =========================
+st.header("🧭 Windrichting – Windroos (maandgemiddelde, knopen)")
+
+# ✅ Bereken maandgemiddelde per station
 maand_avg = (
     maand_df.groupby(["StationID", "Year", "Month"], as_index=False)
     .agg({
-        "WindDirectionAVG": "mean",   # gemiddelde richting over de maand
-        "WindSpeedAVG": "mean"        # gemiddelde snelheid over de maand
+        "WindDirectionAVG": "mean",   # richting in graden
+        "WindSpeedAVG": "mean"        # snelheid in knopen
     })
 )
-
-# =========================
-# 🧭 Windrichtingsectie – Windroos
-# =========================
-st.header("🧭 Windrichting – Windroos (maandgemiddelde)")
 
 # ✅ Filter voor gekozen station en maand
 windroos_df = maand_avg[
@@ -296,21 +294,23 @@ else:
     speed = windroos_df["WindSpeedAVG"].values[0]
 
     # 📈 Compacte windroos plot
-    fig4, ax4 = plt.subplots(figsize=(3.5, 3.5), subplot_kw={"projection": "polar"})
+    fig4, ax4 = plt.subplots(figsize=(2.8, 2.8), subplot_kw={"projection": "polar"})
     bars = ax4.bar([angle], [speed], width=0.35,
                    color="dodgerblue", edgecolor="black")
 
     # 🧭 Noord bovenaan, klokwijzer
     ax4.set_theta_zero_location("N")
     ax4.set_theta_direction(-1)
-    ax4.set_title(f"Windroos – {station} ({gekozen_maand}-{gekozen_jaar})")
+    ax4.set_title(f"{station} – Windroos ({gekozen_maand}-{gekozen_jaar})", fontsize=9)
 
     # 🏷️ Richtinglabels + graden
     ticks_deg = [0, 45, 90, 135, 180, 225, 270, 315]
-    labels = ["N (0°)", "NE (45°)", "E (90°)", "SE (135°)",
-              "S (180°)", "SW (225°)", "W (270°)", "NW (315°)"]
+    labels = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     ax4.set_xticks([deg * (3.14159 / 180) for deg in ticks_deg])
-    ax4.set_xticklabels(labels)
+    ax4.set_xticklabels(labels, fontsize=8)
+
+    # 📏 Dynamische schaal in knopen
+    ax4.set_ylim(0, speed * 1.2)  # 20% marge boven de max waarde
 
     # ✅ Windroos tonen
     st.pyplot(fig4)
